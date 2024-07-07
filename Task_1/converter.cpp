@@ -42,11 +42,35 @@ void convert(const std::string &json_path, const std::string &DOT_path) {
 }
 
 int main(int argc, char* argv[]) {
+    try {
+        po::options_description desc("Allowed options");
+        desc.add_options()
+            ("help", "produce help message")
+            ("input", po::value<std::string>(), "set input .json file")
+            ("output", po::value<std::string>(), "set output .DOT file");
 
-    std::string inputJsonPath = argv[1];
-    std::string outputDotPath = argv[2];
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
 
-    convert(inputJsonPath, outputDotPath);
+        if (vm.count("help")) {
+            std::cout << desc << "\n";
+            return 1;
+        }
 
-    return 0;
+        if (!vm.count("input") || !vm.count("output")) {
+            std::cerr << "Both input and output file paths must be specified.\n";
+            std::cout << desc << "\n";
+            return 1;
+        }
+
+        std::string input_path = vm["input"].as<std::string>();
+        std::string output_path = vm["output"].as<std::string>();
+
+        convert(input_path, output_path);
+
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
 }
