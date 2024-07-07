@@ -1,0 +1,10 @@
+digraph {
+    start [style=invis];
+    start -> q1 ;
+    q1 -> q1 [label="z1/w2"];
+    q1 -> q2 [label="z2/w1"];
+    q2 -> q3 [label="z1/w2"];
+    q2 -> q1 [label="z2/w2"];
+    q3 -> q1 [label="z1/w2"];
+    q3 -> q2 [label="z2/w1"];
+}
