@@ -3,7 +3,6 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
-#include <locale>
 #include <string>
 
 namespace pt = boost::property_tree;
@@ -22,7 +21,7 @@ void convert(const std::string &json_path, const std::string &DOT_path) {
     DOT_file << "digraph {\n";
 
     std::string initial_state = tree.get<std::string>("initial_state");
-    DOT_file << "    start [style=invis];\n" << "    start -> " << initial_state << " ;\n";
+    DOT_file << "    " << initial_state << " [shape=doublecircle];\n";
 
     for (const auto &state : tree.get_child("transitions")) {
         std::string state_name = state.first;
