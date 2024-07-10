@@ -234,8 +234,6 @@ int main(int argc, char* argv[]) {
             ("n_alph_out_max", po::value<int>(), "set maximum output alphabet size")
             ("n_trans_out_min", po::value<int>(), "set minimum number of outgoing transitions")
             ("n_trans_out_max", po::value<int>(), "set maximum number of outgoing transitions")
-            ("n_trans_in_min", po::value<int>(), "set minimum number of incoming transitions")
-            ("n_trans_in_max", po::value<int>(), "set maximum number of incoming transitions")
             ("out", po::value<std::string>(), "set output file name");
 
         po::variables_map vm;
