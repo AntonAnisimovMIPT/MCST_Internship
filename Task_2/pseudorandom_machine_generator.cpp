@@ -7,6 +7,7 @@
 #include <set>
 #include <vector>
 #include <unordered_map>
+#include <algorithm>
 
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
@@ -32,7 +33,8 @@ struct generator_parameters
 
 };
 
-std::vector<std::string> create_sequence_q_i(int n_states) {
+std::vector<std::string> create_sequence_q_i(int n_states) 
+{
     std::vector<std::string> sequence;
     for (int i = 1; i <= n_states; ++i) 
     {
@@ -41,47 +43,59 @@ std::vector<std::string> create_sequence_q_i(int n_states) {
     return sequence;
 }
 
-std::vector<std::string> missing_elements(const std::unordered_map<std::string, int>& container, const std::vector<std::string>& sequence) {
-    std::vector<std::string> missing;
-    for (const auto& elem : sequence) 
-    {
-        if (container.find(elem) == container.end()) 
-        {
-            missing.push_back(elem);
-        }
-    }
-    return missing;
-}
-
-auto generate_machine(const generator_parameters &params) 
+int generate_machine(const generator_parameters &params) 
 {
+
     // проверка введеных пользователем значений диапазонов
     if (params.n_states_min > params.n_states_max)
     {
-        std::cerr << "incorrect range for states";
-        return 2;
+        std::cerr << "incorrect range for states" << std::endl;
+        return 1;
     }
     if (params.n_alph_in_min > params.n_alph_in_max)
     {
-        std::cerr << "incorrect range for alph_in";
-        return 2;
+        std::cerr << "incorrect range for alph_in" << std::endl;
+        return 1;
     }
     if (params.n_alph_out_min > params.n_alph_out_max)
     {
-        std::cerr << "incorrect range for alph_out";
-        return 2;
+        std::cerr << "incorrect range for alph_out" << std::endl;
+        return 1;
     }
     if (params.n_trans_out_min > params.n_trans_out_max)
     {
-        std::cerr << "incorrect range for trans_out";
-        return 2;
+        std::cerr << "incorrect range for trans_out" << std::endl;
+        return 1;
     }
+        if (params.n_states_min <= 0 || params.n_states_max <= 0)
+    {
+        std::cerr << "non - positive bound for states_min or states_max" << std::endl;
+        return 1;
+    }
+    if (params.n_alph_in_min <= 0 || params.n_alph_in_max <= 0)
+    {
+        std::cerr << "non - positive bound for alph_in_min or alph_in_max" << std::endl;
+        return 1;
+    }
+    if (params.n_alph_out_min <= 0 || params.n_alph_out_max <= 0)
+    {
+        std::cerr << "non - positive bound for alph_out_min or alph_out_max" << std::endl;
+        return 1;
+    }
+    if (params.n_trans_out_min <= 0 || params.n_trans_out_max <= 0)
+    {
+        std::cerr << "non - positive bound for trans_out_min or trans_out_max" << std::endl;
+        return 1;
+    }
+
     // если вдруг условие n_alph_in_max > n_trans_out_min нарушено, то детерминированного автомата вообще не может существовать
     if (params.n_alph_in_max < params.n_trans_out_min)
     {
-        std::cerr << "incorrect combination between alph_in_max and trans_out_min - condition n_alph_in_max > n_trans_out_min is violated!!!";
-        return 2;
+        std::cerr << "incorrect combination between alph_in_max and trans_out_min - condition n_alph_in_max > n_trans_out_min is violated!!!"  << std::endl;
+        return 1;
     }
+
+
     
     // число состояний, мощности алфавитов входных и выходных символов - общие для всего автомата
     std::mt19937 gen(params.seed);
@@ -107,28 +121,84 @@ auto generate_machine(const generator_parameters &params)
     pt::ptree tree;
     tree.put("initial_state", "q1");
 
-    // для отслеживания состояний, в которые когда-либо вели переходы
-    std::unordered_map<std::string, int> states_with_incoming_transitions;
-
     pt::ptree transitions;
+    
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    for (int i = 1; i <= n_states; ++i) 
+    // изначально нужно сгенерировать связный "каркас" (т.е. тот, у которого в каждое состояние ведет один переход; круговая зависимость - единственный возможный сопсоб)
+    // создадим круговую последовательность состояний и сделаем ее неупорядоченной
+    auto all_qi = create_sequence_q_i(n_states);
+    std::mt19937 g(params.seed);
+    std::shuffle(all_qi.begin(), all_qi.end(), g);
+    
+    for (auto i = 0; i < n_states; ++i)
     {
+        if (i == n_states - 1)
+        {
+            std::string current_state = all_qi[0];
+            std::string donor_state = all_qi[i];
 
-        std::string state_name = "q" + std::to_string(i);
-        pt::ptree state_transitions;
+            // задание символов перехода
+            std::string symb_in_donor_state = "z" + std::to_string(dist_symb_in(gen));
+            std::string symb_out_donor_state = "w" + std::to_string(dist_symb_out(gen));
+
+            // задание перехода
+            pt::ptree transition;
+            transition.put("state", current_state);
+            transition.put("output", symb_out_donor_state);
+            pt::ptree state_transitions;
+            state_transitions.add_child(symb_in_donor_state, transition);
+            transitions.add_child(donor_state, state_transitions);
+
+        }
+        else 
+        {
+        
+            std::string current_state = all_qi[i+1];
+            std::string donor_state = all_qi[i];
+
+            // задание символов перехода
+            std::string symb_in_donor_state = "z" + std::to_string(dist_symb_in(gen));
+            std::string symb_out_donor_state = "w" + std::to_string(dist_symb_out(gen));
+
+            // задание перехода
+            pt::ptree transition;
+            transition.put("state", current_state);
+            transition.put("output", symb_out_donor_state);
+            pt::ptree state_transitions;
+            state_transitions.add_child(symb_in_donor_state, transition);
+            transitions.add_child(donor_state, state_transitions);
+
+        }
+    }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // после того как связный "каркас" сгенерирован, нужно случайным образом задать выходные переходы для каждого состояния
+    for (auto &&qi : all_qi)
+    {
+        pt::ptree added_state_transitions;
         auto n_trans_out = dist_n_trans_out(gen);
         std::set<std::string> used_in_symbols;
 
-        for (int j = 0; j < n_trans_out; ++j) {
-            std::string symb_in;
-            do 
+        // учет входной строки выходного перехода, который уже был сгенерирован
+        auto qi_opt = transitions.get_child_optional(qi);
+        if (qi_opt) 
+        {
+            auto& qi = *qi_opt;
+            for (auto&& zi : qi) 
             {
-
+                used_in_symbols.insert(zi.first);
+            }
+        }
+        
+        // от 1, а не от 0, т.к. в генерации связного "каркаса" уже есть по одному выходу на каждое состяние
+        for (int j = 1; j < n_trans_out; ++j) 
+        {
+            std::string symb_in;
+            while (used_in_symbols.find(symb_in) != used_in_symbols.end() || symb_in.empty() ) 
+            {
                 symb_in = "z" + std::to_string(dist_symb_in(gen));
-
-            } 
-            while (used_in_symbols.find(symb_in) != used_in_symbols.end());
+            };
             used_in_symbols.insert(symb_in);
 
             std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
@@ -137,86 +207,22 @@ auto generate_machine(const generator_parameters &params)
             pt::ptree transition;
             std::string added_state = "q" + std::to_string(next_state);
             transition.put("state", added_state);
-
-            auto it = states_with_incoming_transitions.find(added_state);
-            if (it == states_with_incoming_transitions.end()) 
-            {
-                states_with_incoming_transitions.insert({added_state, 1});
-            } 
-            else 
-            {
-                it->second++;
-            }
-            
             transition.put("output", symb_out);
-            state_transitions.add_child(symb_in, transition);
+            added_state_transitions.add_child(symb_in, transition);
         }
-        transitions.add_child(state_name, state_transitions);
-    }
-
- 
-    auto all_states = create_sequence_q_i(n_states);
-    auto without_in_transitions = missing_elements(states_with_incoming_transitions, all_states);
-
-    // цикл для достижения того, что в каждое состояние вел хотя бы один переход
-    auto ind = 0;
-    while(ind < without_in_transitions.size()) {
-        bool transition_made = false;
-
-        for (auto &&i : all_states)
-        {
-            auto qi_opt = transitions.get_child_optional(i);
-            if (!qi_opt) continue;
-
-            auto& qi = *qi_opt;
-            auto z_count = qi.size();
-                
-            // если число исходящих переходов > 1, то один из них, вероятно, можно перенаправить в то состояние, в которого не входит не один переход
-            if (z_count > 1) 
-            {
-                // перенаправлять имеем право только тот, который не является единственным входящим в какое-дибо другое состояние переход
-                for (auto&& zi : qi) 
-                {
-                    auto state_opt = zi.second.get_optional<std::string>("state");
-                    if (!state_opt) continue;
-
-                    auto it = states_with_incoming_transitions.find(*state_opt);
-                    if (it->second > 1) {
-            
-                        zi.second.put("state", without_in_transitions[ind]);
-                        it->second--;
-                        ind++;
-                        transition_made = true;
-                        if (ind >= without_in_transitions.size()) 
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-            if (ind >= without_in_transitions.size()) 
-            {
-            break;
-            }
-        }
-        // возможен случай, когда в состояния ведут по одному и менее переходов, тогда ни при каких условиях не получится перекинуть хотя бы один переход из них в состояние с 0 входных переходов
-        if (!transition_made) 
-        {
-            std::cerr << "No suitable transition found to redirect, exiting to avoid infinite loop." << std::endl;
-            break;
-        }
+        transitions.add_child(qi, added_state_transitions);
     }
 
     tree.add_child("transitions", transitions);
-
     std::ofstream output(params.output_file);
     if (!output.is_open()) 
     {
         std::cerr << "Error opening output file!!!" << std::endl;
-        return 1;
+        return 2;
     }
     pt::write_json(output, tree);
     return 0;
+
 }
 
 int main(int argc, char* argv[]) {
@@ -225,25 +231,27 @@ int main(int argc, char* argv[]) {
         po::options_description desc("Allowed options");
         desc.add_options()
             ("help", "produce help message")
-            ("seed", po::value<int>(), "set random seed")
-            ("n_states_min", po::value<int>(), "set minimum number of states")
-            ("n_states_max", po::value<int>(), "set maximum number of states")
-            ("n_alph_in_min", po::value<int>(), "set minimum input alphabet size")
-            ("n_alph_in_max", po::value<int>(), "set maximum input alphabet size")
-            ("n_alph_out_min", po::value<int>(), "set minimum output alphabet size")
-            ("n_alph_out_max", po::value<int>(), "set maximum output alphabet size")
-            ("n_trans_out_min", po::value<int>(), "set minimum number of outgoing transitions")
-            ("n_trans_out_max", po::value<int>(), "set maximum number of outgoing transitions")
-            ("out", po::value<std::string>(), "set output file name");
+            ("seed", po::value<int>()->required(), "set random seed")
+            ("n_states_min", po::value<int>()->required(), "set minimum number of states")
+            ("n_states_max", po::value<int>()->required(), "set maximum number of states")
+            ("n_alph_in_min", po::value<int>()->required(), "set minimum input alphabet size")
+            ("n_alph_in_max", po::value<int>()->required(), "set maximum input alphabet size")
+            ("n_alph_out_min", po::value<int>()->required(), "set minimum output alphabet size")
+            ("n_alph_out_max", po::value<int>()->required(), "set maximum output alphabet size")
+            ("n_trans_out_min", po::value<int>()->required(), "set minimum number of outgoing transitions")
+            ("n_trans_out_max", po::value<int>()->required(), "set maximum number of outgoing transitions")
+            ("out", po::value<std::string>()->required(), "set output file name");
 
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
-        po::notify(vm);
 
-        if (vm.count("help")) {
+        if (vm.count("help")) 
+        {
             std::cout << desc << "\n";
-            return 1;
+            return 0;
         }
+
+        po::notify(vm);
 
         generator_parameters params;
         params.seed = vm["seed"].as<int>();
@@ -257,10 +265,17 @@ int main(int argc, char* argv[]) {
         params.n_trans_out_max = vm["n_trans_out_max"].as<int>();
         params.output_file = vm["out"].as<std::string>();
 
-        generate_machine(params);
+        return generate_machine(params);
 
-    } catch (const std::exception &e) {
+    } 
+    catch (const po::error &e) 
+    {
+        std::cerr << "Command line error: " << e.what() << "\n";
+        return 2;
+    }
+    catch (const std::exception &e) 
+    {
         std::cerr << "Error: " << e.what() << "\n";
-        return 1;
+        return 2;
     }
 }
