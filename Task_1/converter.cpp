@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <unordered_set>
 
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
@@ -23,8 +24,17 @@ int convert(const std::string &json_path, const std::string &DOT_path) {
     std::string initial_state = tree.get<std::string>("initial_state");
     DOT_file << "    " << initial_state << " [shape=doublecircle];\n";
 
+    std::unordered_set<std::string> state_names;
+
     for (const auto &state : tree.get_child("transitions")) {
         std::string state_name = state.first;
+
+        auto it = state_names.find(state_name);
+        if (it != state_names.end()) {
+            std::cerr << "Error: Duplicate state name '" << state_name << "' found\n";
+            return 1;
+        }
+        state_names.insert(state_name);
 
         if (state.second.empty()) {
             std::cerr << "Warning: State '" << state_name << "' has empty transitions\n";
@@ -42,10 +52,10 @@ int convert(const std::string &json_path, const std::string &DOT_path) {
             std::string next_state = transition.second.get<std::string>("state");
 
             if (input_symbol.empty() || output_symbol.empty() || next_state.empty() || state_name == "") {
-                std::cerr << "Warning: Empty transition detected in state '" << state_name << std::endl;
+                std::cerr << "Warning: Empty transition detected in state '" << state_name << "'\n";
                 return 1;
             }
-            
+
             DOT_file << "    " << state_name << " -> " << next_state 
                      << " [label=\"" << input_symbol << "/" << output_symbol << "\"];\n";
         }
