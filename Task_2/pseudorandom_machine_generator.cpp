@@ -176,21 +176,21 @@ int generate_machine(const generator_parameters &params)
     // после того как связный "каркас" сгенерирован, нужно случайным образом задать выходные переходы для каждого состояния
     for (auto &&qi : all_qi)
     {
-        pt::ptree added_state_transitions;
         auto n_trans_out = dist_n_trans_out(gen);
         std::set<std::string> used_in_symbols;
 
-        // учет входной строки выходного перехода, который уже был сгенерирован
         auto qi_opt = transitions.get_child_optional(qi);
+        pt::ptree state_transitions;
         if (qi_opt) 
         {
-            auto& qi = *qi_opt;
-            for (auto&& zi : qi) 
+            auto& qi_node = *qi_opt;
+            for (auto&& zi : qi_node) 
             {
                 used_in_symbols.insert(zi.first);
+                state_transitions = qi_node;
             }
         }
-        
+
         // от 1, а не от 0, т.к. в генерации связного "каркаса" уже есть по одному выходу на каждое состяние
         for (int j = 1; j < n_trans_out; ++j) 
         {
@@ -208,9 +208,10 @@ int generate_machine(const generator_parameters &params)
             std::string added_state = "q" + std::to_string(next_state);
             transition.put("state", added_state);
             transition.put("output", symb_out);
-            added_state_transitions.add_child(symb_in, transition);
+
+            state_transitions.add_child(symb_in, transition);
         }
-        transitions.add_child(qi, added_state_transitions);
+        transitions.put_child(qi, state_transitions);
     }
 
     tree.add_child("transitions", transitions);
