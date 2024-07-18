@@ -109,10 +109,7 @@ int generate_machine(const generator_parameters &params) {
     */
 
     auto all_qi = create_sequence_q_i(n_states);
-
-    // выбор случайного начального элемента в векторе
-    std::uniform_int_distribution<> rand_elem(0, all_qi.size() - 1);
-    tree.put("initial_state", all_qi[rand_elem(gen)]);
+    std::shuffle(all_qi.begin(), all_qi.end(), gen);
 
     // для хранения информации об исходящих переходах
     std::unordered_map<std::string, unsigned int> output_transitions;
@@ -256,16 +253,8 @@ int generate_machine(const generator_parameters &params) {
             auto next_it = ++tmp_it;
 
             auto &next_donor = next_it->first;
-            auto &next_acceptors = next_it->second;
+            next_state = next_donor;
 
-            std::uniform_int_distribution<> dist_choice(0, next_acceptors.size());
-            auto choice = dist_choice(gen);
-
-            if (choice == 0) {
-                next_state = next_donor;
-            } else {
-                next_state = next_acceptors[choice - 1];
-            }
         }
         // если перекидываем из последней группы, то перекидываем на любую из предыдущих
         else {
@@ -324,10 +313,7 @@ int generate_machine(const generator_parameters &params) {
             std::uniform_int_distribution<> dist_in_all_qi(0, all_qi.size() - 1);
             std::string next_state;
 
-            // выбор следующего состояния, которое не равно текущему состоянию
-            do {
-                next_state = all_qi[dist_in_all_qi(gen)];
-            } while (next_state == qi);
+            next_state = all_qi[dist_in_all_qi(gen)];
 
             output_transitions[qi] -= 1;
 
@@ -340,6 +326,7 @@ int generate_machine(const generator_parameters &params) {
         }
     }
 
+    tree.put("initial_state", groups.begin()->first);
     tree.add_child("transitions", transitions);
 
     std::ofstream output(params.output_file);
