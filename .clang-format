@@ -26,4 +26,5 @@ SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SeparateDefinitionBlocks: Leave
-BreakBeforeBraces: Attach
+IncludeBlocks: Preserve
+SortIncludes: false

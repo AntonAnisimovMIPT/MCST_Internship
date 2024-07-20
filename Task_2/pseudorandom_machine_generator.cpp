@@ -1,13 +1,13 @@
-#include <algorithm>
-#include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/program_options.hpp>
+#include <unordered_map>
+#include <unordered_set>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <random>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace pt = boost::property_tree;
@@ -71,17 +71,13 @@ int generate_machine(const generator_parameters &params) {
     // число состояний, мощности алфавитов входных и выходных символов - общие для всего автомата
     std::mt19937 gen(params.seed);
     std::uniform_int_distribution<unsigned int> dist_n_states(params.n_states_min, params.n_states_max);
-    std::uniform_int_distribution<unsigned int> dist_n_alph_in(params.n_alph_in_min, params.n_alph_in_max);
     std::uniform_int_distribution<unsigned int> dist_n_alph_out(params.n_alph_out_min, params.n_alph_out_max);
     auto n_states = dist_n_states(gen);
-    auto n_alph_in = dist_n_alph_in(gen);
     auto n_alph_out = dist_n_alph_out(gen);
 
-    // регенерация мощности входного алфавита, если вдруг сгенерированое n_alph_in < n_trans_out_min
-    while (n_alph_in < params.n_trans_out_min) {
-
-        n_alph_in = dist_n_alph_in(gen);
-    }
+    auto lower_bound_alph_in_min = std::max(params.n_alph_in_min, params.n_trans_out_min); // условие на недетерминированность исходящих переходов
+    std::uniform_int_distribution<unsigned int> dist_n_alph_in(lower_bound_alph_in_min, params.n_alph_in_max);
+    auto n_alph_in = dist_n_alph_in(gen);
 
     auto upper_bound_trans_out = std::min(params.n_trans_out_max, n_alph_in); // условие на недетерминированность исходящих переходов
     std::uniform_int_distribution<unsigned int> dist_n_trans_out(params.n_trans_out_min, upper_bound_trans_out);
@@ -117,40 +113,39 @@ int generate_machine(const generator_parameters &params) {
     std::vector<std::string> donors;
     // для хранения акцепторов
     std::vector<std::string> acceptors;
-    // счетчик суммы всех n_trans_out
+    // счетчик состояний, которые могут быть уже связанными
     auto sum_all_trans_out = 0;
 
     // для работы с группами соединений (ключ - название донора, значения - массив акцепторов)
     std::unordered_map<std::string, std::vector<std::string>> groups;
 
-    auto first_necessary_condition = false;
-    while (!first_necessary_condition) {
+    // приступаем к генерации "на ходу"
+    // изначально нужно понять, сколько исходящих переходов у каждого состояния
+    for (size_t q_i = 0; q_i < all_qi.size(); q_i++) {
+        // генерируем число исходящих переходов для текущего состояния
+        auto n_trans_out = dist_n_trans_out(gen);
 
-        output_transitions.clear();
-        donors.clear();
-        acceptors.clear();
-        sum_all_trans_out = 0;
+        // если вдруг сгенерированное число исходящих переходов = 0, но при этом есть еще несвязанные состояния, то меняем нижнюю границу генерации на 1
+        if (n_trans_out == 0 && sum_all_trans_out < all_qi.size()) {
 
-        for (auto &&qi : all_qi) {
-            // нам нужно понять донор или акцептор, для этого нужно узнать число n_trans_out
-            auto n_trans_out = dist_n_trans_out(gen);
-            if (n_trans_out > 0) {
-
-                donors.push_back(qi);
-                output_transitions.insert(std::make_pair(qi, n_trans_out));
-                sum_all_trans_out += n_trans_out;
-
-            } else {
-
-                acceptors.push_back(qi);
-                output_transitions.insert(std::make_pair(qi, n_trans_out));
-            }
+            std::uniform_int_distribution<unsigned int> dist_n_trans_out_displaced(1, upper_bound_trans_out);
+            n_trans_out = dist_n_trans_out_displaced(gen);
         }
-        if (sum_all_trans_out >= n_states) {
-            first_necessary_condition = true;
+        sum_all_trans_out += n_trans_out;
+
+        // нам нужно понять донор или акцептор, для этого нужно узнать число n_trans_out
+        if (n_trans_out > 0) {
+
+            donors.push_back(all_qi[q_i]);
+
+        } else {
+
+            acceptors.push_back(all_qi[q_i]);
         }
+        output_transitions.insert(std::make_pair(all_qi[q_i], n_trans_out));
     }
 
+    // теперь осталось связать каркас
     for (size_t i = 0; i < all_qi.size(); i++) {
         ////// отслеживание входных символов перехода
         std::set<std::string> used_in_symbols;
@@ -192,6 +187,7 @@ int generate_machine(const generator_parameters &params) {
             т.о. будут созданы группы из одного донора и акцепторов
             важно понимать, что эти группы могут не пересекаться, поэтому задача пересечения - следующий этап
             */
+
             if (!acceptors.empty()) {
 
                 next_state = acceptors.back();
@@ -285,7 +281,6 @@ int generate_machine(const generator_parameters &params) {
 
     // теперь, когда связный каркас сгенерирован, можно поперебрасывать оставшиеся переходы
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     for (auto &&qi : all_qi) {
 
         pt::ptree transition;
