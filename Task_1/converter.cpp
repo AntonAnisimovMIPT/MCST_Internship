@@ -37,26 +37,23 @@ int convert(const std::string &json_path, const std::string &DOT_path) {
         state_names.insert(state_name);
 
         if (state.second.empty()) {
-            std::cerr << "Warning: State '" << state_name << "' has empty transitions\n";
-            return 1;
+            continue;
         }
 
         for (const auto &transition : state.second) {
             std::string input_symbol = transition.first;
 
             if (transition.second.empty()) {
-                std::cerr << "Warning: Transition '" << input_symbol << "' in state '" << state_name << "' is empty\n";
-                return 1;
+                continue;
             }
             std::string output_symbol = transition.second.get<std::string>("output");
             std::string next_state = transition.second.get<std::string>("state");
 
             if (input_symbol.empty() || output_symbol.empty() || next_state.empty() || state_name == "") {
-                std::cerr << "Warning: Empty transition detected in state '" << state_name << "'\n";
-                return 1;
+                continue;
             }
 
-            DOT_file << "    " << state_name << " -> " << next_state 
+            DOT_file << "    " << state_name << " -> " << next_state
                      << " [label=\"" << input_symbol << "/" << output_symbol << "\"];\n";
         }
     }
@@ -66,13 +63,10 @@ int convert(const std::string &json_path, const std::string &DOT_path) {
     return 0;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     try {
         po::options_description desc("Allowed options");
-        desc.add_options()
-            ("help", "produce help message")
-            ("input", po::value<std::string>(), "set input .json file")
-            ("output", po::value<std::string>(), "set output .DOT file");
+        desc.add_options()("help", "produce help message")("input", po::value<std::string>(), "set input .json file")("output", po::value<std::string>(), "set output .DOT file");
 
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);

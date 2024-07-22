@@ -126,7 +126,7 @@ int generate_machine(const generator_parameters &params) {
         auto n_trans_out = dist_n_trans_out(gen);
 
         // если вдруг сгенерированное число исходящих переходов = 0, но при этом есть еще несвязанные состояния, то меняем нижнюю границу генерации на 1
-        if (n_trans_out == 0 && sum_all_trans_out < all_qi.size()) {
+        if (n_trans_out == 0 && sum_all_trans_out < all_qi.size() - 1) {
 
             std::uniform_int_distribution<unsigned int> dist_n_trans_out_displaced(1, upper_bound_trans_out);
             n_trans_out = dist_n_trans_out_displaced(gen);
@@ -250,32 +250,43 @@ int generate_machine(const generator_parameters &params) {
 
             auto &next_donor = next_it->first;
             next_state = next_donor;
+            output_transitions[it->first] -= 1;
+            transition.put("state", next_state);
+            transition.put("output", symb_out);
+            state_transitions.add_child(symb_in, transition);
 
         }
         // если перекидываем из последней группы, то перекидываем на любую из предыдущих
         else {
 
-            std::uniform_int_distribution<> dist_group(0, groups.size() - 1);
-            auto rand_group = dist_group(gen);
+            // для последнего состояния можем перекинуть, а можем и не перекинуть
+            std::uniform_int_distribution<> need_transfer(0, 1);
+            auto is_transfer = need_transfer(gen);
 
-            auto other_it = groups.begin();
-            std::advance(other_it, rand_group);
-            std::uniform_int_distribution<> dist_choice(0, other_it->second.size());
-            auto choice = dist_choice(gen);
+            // если перекидываем
+            if (is_transfer == true) {
+                std::uniform_int_distribution<>
+                    dist_group(0, groups.size() - 1);
+                auto rand_group = dist_group(gen);
 
-            if (choice == 0) {
-                next_state = other_it->first;
-            } else {
-                next_state = other_it->second[choice - 1];
+                auto other_it = groups.begin();
+                std::advance(other_it, rand_group);
+                std::uniform_int_distribution<> dist_choice(0, other_it->second.size());
+                auto choice = dist_choice(gen);
+
+                if (choice == 0) {
+                    next_state = other_it->first;
+                } else {
+                    next_state = other_it->second[choice - 1];
+                }
+                output_transitions[it->first] -= 1;
+                transition.put("state", next_state);
+                transition.put("output", symb_out);
+                state_transitions.add_child(symb_in, transition);
             }
         }
-        output_transitions[it->first] -= 1;
         ind++;
 
-        transition.put("state", next_state);
-        transition.put("output", symb_out);
-
-        state_transitions.add_child(symb_in, transition);
         transitions.put_child(it->first, state_transitions);
     }
 
