@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(Boost_USE_STATIC_LIBS ON)
 
-find_package(Boost 1.85 REQUIRED COMPONENTS program_options)
+find_package(Boost 1.82 REQUIRED COMPONENTS program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(pseudorandom_machine_generator pseudorandom_machine_generator.cpp)
