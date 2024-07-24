@@ -35,7 +35,7 @@ do
     ./build/pseudorandom_machine_generator --seed $seed --n_states_min $n_states_min --n_states_max $n_states_max --n_alph_in_min $n_alph_in_min --n_alph_in_max $n_alph_in_max --n_alph_out_min $n_alph_out_min --n_alph_out_max $n_alph_out_max --n_trans_out_min $n_trans_out_min --n_trans_out_max $n_trans_out_max --out $output_file
     returned=$?
     if [ $returned -ne 0 ]; then
-        echo "Error during pseudorandom_machine_generator execution with seed $seed"
+        echo "Error during pseudorandom_machine_generator execution with --seed $seed --n_states_min $n_states_min --n_states_max $n_states_max --n_alph_in_min $n_alph_in_min --n_alph_in_max $n_alph_in_max --n_alph_out_min $n_alph_out_min --n_alph_out_max $n_alph_out_max --n_trans_out_min $n_trans_out_min --n_trans_out_max $n_trans_out_max"
         exit $returned
     fi
 

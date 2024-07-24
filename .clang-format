@@ -14,7 +14,7 @@ AlignTrailingComments: true
 AlwaysBreakAfterReturnType: None
 AlwaysBreakTemplateDeclarations: false
 DerivePointerAlignment: false
-PointerAlignment: Right
+PointerAlignment: Left
 SpaceAfterCStyleCast: false
 SpaceAfterTemplateKeyword: true
 SpaceBeforeAssignmentOperators: true

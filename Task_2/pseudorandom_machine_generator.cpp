@@ -26,7 +26,7 @@ struct generator_parameters {
     std::string output_file;
 };
 
-std::vector<std::string> create_sequence_q_i(int n_states) {
+auto create_sequence_q_i(int n_states) {
     std::vector<std::string> sequence;
     for (int i = 1; i <= n_states; ++i) {
         sequence.push_back("q" + std::to_string(i));
@@ -34,7 +34,15 @@ std::vector<std::string> create_sequence_q_i(int n_states) {
     return sequence;
 }
 
-int generate_machine(const generator_parameters &params) {
+auto create_input_symbols(int lower_bound, int upper_bound) {
+    std::vector<std::string> input_symbols;
+    for (int i = lower_bound; i <= upper_bound; ++i) {
+        input_symbols.push_back("z" + std::to_string(i));
+    }
+    return input_symbols;
+}
+
+int generate_machine(const generator_parameters& params) {
 
     // проверка введеных пользователем значений диапазонов (явные ошибки)
     if (params.n_states_min > params.n_states_max) {
@@ -83,7 +91,7 @@ int generate_machine(const generator_parameters &params) {
     std::uniform_int_distribution<unsigned int> dist_n_trans_out(params.n_trans_out_min, upper_bound_trans_out);
 
     std::uniform_int_distribution<unsigned int> dist_symb_out(1, n_alph_out);
-    std::uniform_int_distribution<unsigned int> dist_symb_in(1, n_alph_in);
+    // std::uniform_int_distribution<unsigned int> dist_symb_in(1, n_alph_in);
 
     pt::ptree tree;
     pt::ptree transitions;
@@ -119,18 +127,25 @@ int generate_machine(const generator_parameters &params) {
     // для работы с группами соединений (ключ - название донора, значения - массив акцепторов)
     std::unordered_map<std::string, std::vector<std::string>> groups;
 
+    // для хранения информации о неиспользованных входных символах
+    std::unordered_map<std::string, std::vector<std::string>> unused_input_symbols;
+
     // приступаем к генерации "на ходу"
     // изначально нужно понять, сколько исходящих переходов у каждого состояния
     for (size_t q_i = 0; q_i < all_qi.size(); q_i++) {
+
+        auto lower_bound_trans_out = 0;
+
+        // если вдруг есть еще несвязанные состояния, то нижняя граница генерации 1
+        if (sum_all_trans_out < all_qi.size() - 1) {
+
+            lower_bound_trans_out = 1;
+        }
+
         // генерируем число исходящих переходов для текущего состояния
+        std::uniform_int_distribution<unsigned int> dist_n_trans_out(lower_bound_trans_out, upper_bound_trans_out);
         auto n_trans_out = dist_n_trans_out(gen);
 
-        // если вдруг сгенерированное число исходящих переходов = 0, но при этом есть еще несвязанные состояния, то меняем нижнюю границу генерации на 1
-        if (n_trans_out == 0 && sum_all_trans_out < all_qi.size() - 1) {
-
-            std::uniform_int_distribution<unsigned int> dist_n_trans_out_displaced(1, upper_bound_trans_out);
-            n_trans_out = dist_n_trans_out_displaced(gen);
-        }
         sum_all_trans_out += n_trans_out;
 
         // нам нужно понять донор или акцептор, для этого нужно узнать число n_trans_out
@@ -147,18 +162,13 @@ int generate_machine(const generator_parameters &params) {
 
     // теперь осталось связать каркас
     for (size_t i = 0; i < all_qi.size(); i++) {
-        ////// отслеживание входных символов перехода
-        std::set<std::string> used_in_symbols;
-        auto qi_opt = transitions.get_child_optional(all_qi[i]);
-        pt::ptree state_transitions;
-        if (qi_opt) {
-            auto &qi_node = *qi_opt;
-            for (auto &&zi : qi_node) {
 
-                used_in_symbols.insert(zi.first);
-                state_transitions = qi_node;
-            }
-        }
+        pt::ptree state_transitions;
+
+        ////// отслеживание входных символов перехода
+        auto in_symbs = create_input_symbols(1, n_alph_in);
+        std::shuffle(in_symbs.begin(), in_symbs.end(), gen);
+        unused_input_symbols.insert({all_qi[i], in_symbs});
 
         auto o_trs = output_transitions[all_qi[i]];
 
@@ -173,11 +183,8 @@ int generate_machine(const generator_parameters &params) {
             output_transitions[all_qi[i]] -= 1;
             o_trs = output_transitions[all_qi[i]];
 
-            std::string symb_in;
-            while (used_in_symbols.find(symb_in) != used_in_symbols.end() || symb_in.empty()) {
-                symb_in = "z" + std::to_string(dist_symb_in(gen));
-            };
-            used_in_symbols.insert(symb_in);
+            auto symb_in = std::find(unused_input_symbols.begin(), unused_input_symbols.end(), all_qi[i])->second.back();
+            std::find(unused_input_symbols.begin(), unused_input_symbols.end(), all_qi[i])->second.pop_back();
 
             std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
             std::string next_state;
@@ -221,23 +228,8 @@ int generate_machine(const generator_parameters &params) {
         pt::ptree transition;
         pt::ptree state_transitions;
 
-        std::set<std::string> used_in_symbols;
-
-        auto qi_opt = transitions.get_child_optional(it->first);
-
-        if (qi_opt) {
-            auto &qi_node = *qi_opt;
-            for (auto &&zi : qi_node) {
-                used_in_symbols.insert(zi.first);
-                state_transitions = qi_node;
-            }
-        }
-
-        std::string symb_in;
-        while (used_in_symbols.find(symb_in) != used_in_symbols.end() || symb_in.empty()) {
-            symb_in = "z" + std::to_string(dist_symb_in(gen));
-        };
-        used_in_symbols.insert(symb_in);
+        auto symb_in = std::find(unused_input_symbols.begin(), unused_input_symbols.end(), it->first)->second.back();
+        std::find(unused_input_symbols.begin(), unused_input_symbols.end(), it->first)->second.pop_back();
 
         std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
         std::string next_state;
@@ -248,7 +240,7 @@ int generate_machine(const generator_parameters &params) {
             auto tmp_it = it;
             auto next_it = ++tmp_it;
 
-            auto &next_donor = next_it->first;
+            auto& next_donor = next_it->first;
             next_state = next_donor;
             output_transitions[it->first] -= 1;
             transition.put("state", next_state);
@@ -265,8 +257,7 @@ int generate_machine(const generator_parameters &params) {
 
             // если перекидываем
             if (is_transfer == true) {
-                std::uniform_int_distribution<>
-                    dist_group(0, groups.size() - 1);
+                std::uniform_int_distribution<> dist_group(0, groups.size() - 1);
                 auto rand_group = dist_group(gen);
 
                 auto other_it = groups.begin();
@@ -292,28 +283,16 @@ int generate_machine(const generator_parameters &params) {
 
     // теперь, когда связный каркас сгенерирован, можно поперебрасывать оставшиеся переходы
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    for (auto &&qi : all_qi) {
+    for (auto&& qi : all_qi) {
 
         pt::ptree transition;
         pt::ptree state_transitions;
 
-        std::set<std::string> used_in_symbols;
-        auto qi_opt = transitions.get_child_optional(qi);
-        if (qi_opt) {
-            auto &qi_node = *qi_opt;
-            for (auto &&zi : qi_node) {
-                used_in_symbols.insert(zi.first);
-                state_transitions = qi_node;
-            }
-        }
-
         // перебрасывать оставшиеся переходы можно только у тех состояний, у которых они остались
         while (output_transitions[qi] > 0) {
-            std::string symb_in;
-            while (used_in_symbols.find(symb_in) != used_in_symbols.end() || symb_in.empty()) {
-                symb_in = "z" + std::to_string(dist_symb_in(gen));
-            }
-            used_in_symbols.insert(symb_in);
+
+            auto symb_in = std::find(unused_input_symbols.begin(), unused_input_symbols.end(), qi)->second.back();
+            std::find(unused_input_symbols.begin(), unused_input_symbols.end(), qi)->second.pop_back();
 
             std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
             std::uniform_int_distribution<> dist_in_all_qi(0, all_qi.size() - 1);
@@ -344,7 +323,7 @@ int generate_machine(const generator_parameters &params) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     try {
         po::options_description desc("Allowed options");
         desc.add_options()("help", "produce help message")("seed", po::value<unsigned int>()->required(), "set random seed")("n_states_min", po::value<unsigned int>()->required(), "set minimum number of states")("n_states_max", po::value<unsigned int>()->required(), "set maximum number of states")("n_alph_in_min", po::value<unsigned int>()->required(), "set minimum input alphabet size")("n_alph_in_max", po::value<unsigned int>()->required(), "set maximum input alphabet size")("n_alph_out_min", po::value<unsigned int>()->required(), "set minimum output alphabet size")("n_alph_out_max", po::value<unsigned int>()->required(), "set maximum output alphabet size")("n_trans_out_min", po::value<unsigned int>()->required(), "set minimum number of outgoing transitions")("n_trans_out_max", po::value<unsigned int>()->required(), "set maximum number of outgoing transitions")("out", po::value<std::string>()->required(), "set output file name");
@@ -373,10 +352,10 @@ int main(int argc, char *argv[]) {
 
         return generate_machine(params);
 
-    } catch (const po::error &e) {
+    } catch (const po::error& e) {
         std::cerr << "Command line error: " << e.what() << "\n";
         return 2;
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 2;
     }
