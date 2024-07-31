@@ -55,7 +55,7 @@ auto generate_transition_sequences(const pt::ptree& machine, std::vector<std::ve
 
     // Этап #3: фильтрация последовательностей и проверка покрытия всех состояний
     remove_sublists(result_sequences);
-    auto final_sequences = filter_check_present(result_sequences, transitions);
+    auto final_sequences = filter(result_sequences, transitions);
 
     // Этап #4: построение итоговых последовательностей выходных символов
     for (const auto& transition_list : final_sequences) {
@@ -71,56 +71,6 @@ auto generate_transition_sequences(const pt::ptree& machine, std::vector<std::ve
     return 0;
 }
 
-/*
-auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector<std::vector<std::string>>& sequences) {
-    auto initial_state = machine.get<std::string>("initial_state");
-    auto transitions = machine.get_child("transitions");
-
-    std::function<int(const std::string&, int)> find_max_path_len = [&](const std::string& current_state, int current_len) {
-        int max_len = current_len;
-
-        auto transitions_opt = transitions.get_child_optional(current_state);
-        if (!transitions_opt) return max_len;
-
-        for (const auto& transition : transitions_opt.get()) {
-            const auto& transition_data = transition.second;
-            std::string next_state = transition_data.get<std::string>("state");
-
-            int len = find_max_path_len(next_state, current_len + 1);
-            max_len = std::max(max_len, len);
-        }
-
-        return max_len;
-    };
-
-    int max_path_len = find_max_path_len(initial_state, 0);
-    path_len = std::min(path_len, max_path_len);
-
-    std::function<void(const std::string&, std::vector<std::string>&, int)> dfs =
-        [&](const std::string& current_state, std::vector<std::string>& current_sequence, int remaining_len) {
-            if (remaining_len == 0) {
-                sequences.push_back(current_sequence);
-                return;
-            }
-
-            auto transitions_opt = transitions.get_child_optional(current_state);
-            if (!transitions_opt) return;
-
-            for (const auto& transition : transitions_opt.get()) {
-                const std::string& input = transition.first;
-                const auto& transition_data = transition.second;
-                std::string next_state = transition_data.get<std::string>("state");
-
-                current_sequence.push_back(input);
-                dfs(next_state, current_sequence, remaining_len - 1);
-                current_sequence.pop_back();
-            }
-        };
-
-    std::vector<std::string> initial_sequence;
-    dfs(initial_state, initial_sequence, path_len);
-}
-*/
 auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector<std::vector<std::string>>& sequences) {
     auto initial_state = machine.get<std::string>("initial_state");
     auto transitions = machine.get_child("transitions");

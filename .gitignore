@@ -1,5 +1,6 @@
 build/
 tests/
+tests_covers/
 .vscode/
 *.DOT
 *.json
