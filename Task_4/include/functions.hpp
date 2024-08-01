@@ -79,4 +79,6 @@ struct PathHash {
 };
 std::unordered_set<Path, PathHash> get_all_paths(const pt::ptree& machine, int path_len);
 
+bool is_valid_path(const pt::ptree& machine, const std::vector<std::string>& path, const std::string& initial_state);
+
 #endif

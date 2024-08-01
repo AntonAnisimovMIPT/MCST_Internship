@@ -94,6 +94,30 @@ auto check_coverage_transitions(const pt::ptree& machine, const std::vector<std:
 }
 
 auto check_coverage_paths(const pt::ptree& machine, const std::vector<std::vector<std::string>>& sequences, unsigned int path_len) {
+    auto initial_state = machine.get<std::string>("initial_state");
+
+    for (const auto& sequence : sequences) {
+        if (sequence.size() > path_len) {
+            std::string msg_dt;
+            for (const auto& input : sequence) {
+                msg_dt += input;
+                msg_dt += ",";
+            }
+            auto msg = "Sequence length exceeds path length: " + msg_dt;
+            throw std::runtime_error(msg);
+        }
+
+        if (!is_valid_path(machine, sequence, initial_state)) {
+            std::string msg_dt;
+            for (const auto& input : sequence) {
+                msg_dt += input;
+                msg_dt += ",";
+            }
+            auto msg = "Path is invalid: " + msg_dt;
+            throw std::runtime_error(msg);
+        }
+    }
+    return 0;
 }
 
 int main(int argc, char* argv[]) {

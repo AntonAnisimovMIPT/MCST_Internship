@@ -14,8 +14,9 @@ n_alph_out_min=$6
 n_alph_out_max=$7
 n_trans_out_min=$8
 n_trans_out_max=$9
-path_len=${10}
-output_dir=${11}
+output_dir=${10}
+path_len=${11}
+
 
 mkdir -p "$output_dir/jsons"
 mkdir -p "$output_dir/DOTs"

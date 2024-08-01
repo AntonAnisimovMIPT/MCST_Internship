@@ -69,33 +69,17 @@ std::unordered_set<Transition> get_all_transitions(const pt::ptree& machine) {
     return transitions;
 }
 
-std::unordered_set<Path, PathHash> get_all_paths(const pt::ptree& machine, int path_len) {
-    std::unordered_set<Path, PathHash> paths;
-    std::vector<std::pair<std::string, Path>> frontier;
-    frontier.emplace_back(machine.get<std::string>("initial_state"), Path{});
+bool is_valid_path(const pt::ptree& machine, const std::vector<std::string>& path, const std::string& initial_state) {
+    std::string current_state = initial_state;
 
-    while (!frontier.empty()) {
-        auto [current_state, current_path] = frontier.back();
-        frontier.pop_back();
-
-        if (current_path.size() == path_len) {
-            paths.insert(current_path);
-            continue;
-        }
-
-        const auto& state_transitions = machine.get_child("transitions").get_child(current_state);
-        for (const auto& symbol_pair : state_transitions) {
-            Transition transition;
-            transition.current_state = current_state;
-            transition.input_symbol = symbol_pair.first;
-            transition.next_state = symbol_pair.second.get<std::string>("state");
-            transition.output_symbol = symbol_pair.second.get<std::string>("output");
-
-            Path new_path = current_path;
-            new_path.push_back(transition);
-            frontier.emplace_back(transition.next_state, new_path);
+    for (const auto& input : path) {
+        try {
+            auto transitions = machine.get_child("transitions").get_child(current_state);
+            auto next_state = transitions.get<std::string>(input + ".state");
+            current_state = next_state;
+        } catch (const pt::ptree_error& e) {
+            return false;
         }
     }
-
-    return paths;
+    return true;
 }
