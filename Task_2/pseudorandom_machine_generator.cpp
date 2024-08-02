@@ -88,7 +88,7 @@ int generate_machine(const generator_parameters& params) {
     auto n_alph_in = dist_n_alph_in(gen);
 
     auto upper_bound_trans_out = std::min(params.n_trans_out_max, n_alph_in); // условие на недетерминированность исходящих переходов
-    std::uniform_int_distribution<unsigned int> dist_n_trans_out(params.n_trans_out_min, upper_bound_trans_out);
+    // std::uniform_int_distribution<unsigned int> dist_n_trans_out(params.n_trans_out_min, upper_bound_trans_out);
 
     std::uniform_int_distribution<unsigned int> dist_symb_out(1, n_alph_out);
     // std::uniform_int_distribution<unsigned int> dist_symb_in(1, n_alph_in);
@@ -132,10 +132,9 @@ int generate_machine(const generator_parameters& params) {
 
     // приступаем к генерации "на ходу"
     // изначально нужно понять, сколько исходящих переходов у каждого состояния
-    for (size_t q_i = 0; q_i < all_qi.size(); q_i++) {
+    for (size_t i = 0; i < all_qi.size(); i++) {
 
         auto lower_bound_trans_out = 0;
-
         // если вдруг есть еще несвязанные состояния, то нижняя граница генерации 1
         if (sum_all_trans_out < all_qi.size() - 1) {
 
@@ -150,14 +149,11 @@ int generate_machine(const generator_parameters& params) {
 
         // нам нужно понять донор или акцептор, для этого нужно узнать число n_trans_out
         if (n_trans_out > 0) {
-
-            donors.push_back(all_qi[q_i]);
-
+            donors.push_back(all_qi[i]);
         } else {
-
-            acceptors.push_back(all_qi[q_i]);
+            acceptors.push_back(all_qi[i]);
         }
-        output_transitions.insert(std::make_pair(all_qi[q_i], n_trans_out));
+        output_transitions.insert(std::make_pair(all_qi[i], n_trans_out));
     }
 
     // теперь осталось связать каркас
@@ -168,9 +164,10 @@ int generate_machine(const generator_parameters& params) {
         ////// отслеживание входных символов перехода
         auto in_symbs = create_input_symbols(1, n_alph_in);
         std::shuffle(in_symbs.begin(), in_symbs.end(), gen);
+        in_symbs.resize(output_transitions.find(all_qi[i])->second);
         unused_input_symbols.insert({all_qi[i], in_symbs});
 
-        auto o_trs = output_transitions[all_qi[i]];
+        auto o_trs = output_transitions.find(all_qi[i])->second;
 
         // если это донор, то добавляем его
         if (o_trs > 0) {
@@ -180,11 +177,17 @@ int generate_machine(const generator_parameters& params) {
         // отдавать переходы можно до того момента, пока число валентных переходов не станет = 1 (не 0, т.к. это связано с особенностью на следующем этапе алгоритма)
         while (o_trs > 1) {
 
-            output_transitions[all_qi[i]] -= 1;
-            o_trs = output_transitions[all_qi[i]];
+            output_transitions.find(all_qi[i])->second -= 1;
+            o_trs = output_transitions.find(all_qi[i])->second;
 
-            auto symb_in = std::find(unused_input_symbols.begin(), unused_input_symbols.end(), all_qi[i])->second.back();
-            std::find(unused_input_symbols.begin(), unused_input_symbols.end(), all_qi[i])->second.pop_back();
+            auto it_s = unused_input_symbols.find(all_qi[i]);
+            std::string symb_in;
+            if (it_s != unused_input_symbols.end()) {
+                symb_in = it_s->second.back();
+                it_s->second.pop_back();
+            } else {
+                throw std::runtime_error("it_s == unused_input_symbols.end()");
+            }
 
             std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
             std::string next_state;
@@ -228,8 +231,14 @@ int generate_machine(const generator_parameters& params) {
         pt::ptree transition;
         pt::ptree state_transitions;
 
-        auto symb_in = std::find(unused_input_symbols.begin(), unused_input_symbols.end(), it->first)->second.back();
-        std::find(unused_input_symbols.begin(), unused_input_symbols.end(), it->first)->second.pop_back();
+        auto it_s = unused_input_symbols.find(it->first);
+        std::string symb_in;
+        if (it_s != unused_input_symbols.end()) {
+            symb_in = it_s->second.back();
+            it_s->second.pop_back();
+        } else {
+            throw std::runtime_error("it_s == unused_input_symbols.end()");
+        }
 
         std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
         std::string next_state;
@@ -242,7 +251,7 @@ int generate_machine(const generator_parameters& params) {
 
             auto& next_donor = next_it->first;
             next_state = next_donor;
-            output_transitions[it->first] -= 1;
+            output_transitions.find(it->first)->second -= 1;
             transition.put("state", next_state);
             transition.put("output", symb_out);
             state_transitions.add_child(symb_in, transition);
@@ -270,7 +279,7 @@ int generate_machine(const generator_parameters& params) {
                 } else {
                     next_state = other_it->second[choice - 1];
                 }
-                output_transitions[it->first] -= 1;
+                output_transitions.find(it->first)->second -= 1;
                 transition.put("state", next_state);
                 transition.put("output", symb_out);
                 state_transitions.add_child(symb_in, transition);
@@ -283,30 +292,45 @@ int generate_machine(const generator_parameters& params) {
 
     // теперь, когда связный каркас сгенерирован, можно поперебрасывать оставшиеся переходы
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    for (auto&& qi : all_qi) {
 
-        pt::ptree transition;
-        pt::ptree state_transitions;
+    for (const auto& qi : all_qi) {
 
         // перебрасывать оставшиеся переходы можно только у тех состояний, у которых они остались
-        while (output_transitions[qi] > 0) {
+        if (unused_input_symbols.find(qi) != unused_input_symbols.end()) {
 
-            auto symb_in = std::find(unused_input_symbols.begin(), unused_input_symbols.end(), qi)->second.back();
-            std::find(unused_input_symbols.begin(), unused_input_symbols.end(), qi)->second.pop_back();
+            // Загружаем уже существующие переходы для состояния qi
+            pt::ptree state_transitions;
+            if (transitions.find(qi) != transitions.not_found()) {
+                state_transitions = transitions.get_child(qi);
+            }
 
-            std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
-            std::uniform_int_distribution<> dist_in_all_qi(0, all_qi.size() - 1);
-            std::string next_state;
+            while (!unused_input_symbols[qi].empty()) {
 
-            next_state = all_qi[dist_in_all_qi(gen)];
+                auto it_s = unused_input_symbols.find(qi);
+                std::string symb_in;
+                if (it_s != unused_input_symbols.end()) {
 
-            output_transitions[qi] -= 1;
+                    symb_in = it_s->second.back();
+                    it_s->second.pop_back();
 
-            pt::ptree state_transition;
-            state_transition.put("state", next_state);
-            state_transition.put("output", symb_out);
+                } else {
+                    throw std::runtime_error("it_s == unused_input_symbols.end()");
+                }
 
-            state_transitions.add_child(symb_in, state_transition);
+                std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
+                std::uniform_int_distribution<> dist_in_all_qi(0, all_qi.size() - 1);
+
+                auto next_state = all_qi[dist_in_all_qi(gen)];
+                output_transitions[qi] -= 1;
+
+                pt::ptree state_transition;
+                state_transition.put("state", next_state);
+                state_transition.put("output", symb_out);
+
+                state_transitions.add_child(symb_in, state_transition);
+            }
+
+            // Обновляем переходы для состояния qi в дереве transitions
             transitions.put_child(qi, state_transitions);
         }
     }
