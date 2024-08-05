@@ -109,5 +109,5 @@ std::vector<std::list<Transition>> filter(const std::vector<std::list<Transition
 // для режима paths
 void remove_non_unique_substrings(std::vector<std::vector<std::string>>& sequences);
 int find_max_path_len(const pt::ptree& transitions, const std::string& current_state, std::unordered_map<std::string, int>& memo, int input_length, std::unordered_set<std::string>& visited);
-
+std::vector<Transition> find_transitions_from_state(const pt::ptree& machine, const std::string& state);
 #endif

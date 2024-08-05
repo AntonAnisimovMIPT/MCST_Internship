@@ -75,34 +75,83 @@ auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector
     auto initial_state = machine.get<std::string>("initial_state");
     auto transitions = machine.get_child("transitions");
 
+    // изначально нужно подсчитать валидную длину путей
     std::unordered_map<std::string, int> memo;
     std::unordered_set<std::string> visited;
     auto max_path_len = find_max_path_len(transitions, initial_state, memo, path_len, visited);
-    auto real_path_len = std::min(max_path_len, path_len);
+    auto real_max_path_len = std::min(max_path_len, path_len);
 
-    std::function<void(const std::string&, std::vector<std::string>&, int)> dfs =
-        [&](const std::string& current_state, std::vector<std::string>& current_sequence, int remaining_len) {
-            if (remaining_len == 0) {
-                sequences.push_back(current_sequence);
-                return;
+    // контейнеры хранения путей
+    std::vector<std::list<Transition>> tmp_paths;
+    std::vector<std::list<Transition>> result_paths;
+    std::unordered_set<std::list<Transition>, Transition::ListHash> incomplete_and_deadending_paths;
+
+    // начальное состояние есть всегда, поэтому его можно добавить
+    auto initial_trs = find_transitions_from_state(machine, initial_state);
+    if (real_max_path_len != 1) {
+        for (auto& trs : initial_trs) {
+            tmp_paths.push_back({trs});
+        }
+    } else {
+        for (auto& trs : initial_trs) {
+            result_paths.push_back({trs});
+        }
+        return 0;
+    }
+
+    for (auto&& i : tmp_paths) {
+        auto elem = i.back();
+        std::cout << "Current State: " << elem.current_state
+                  << ", Next State: " << elem.next_state
+                  << ", Input Symbol: " << elem.input_symbol
+                  << ", Output Symbol: " << elem.output_symbol << std::endl;
+    }
+
+    std::cout << "debug 1\n";
+    // теперь добавляем переходы (если они есть)
+    for (size_t i = 1; i < real_max_path_len; i++) {
+        // std::vector<size_t> to_delete_indices;
+        // size_t index = 0;
+
+        for (auto& path : tmp_paths) {
+            auto it_f = incomplete_and_deadending_paths.find(path);
+            if (it_f == incomplete_and_deadending_paths.end()) {
+                auto ending = path.back().next_state;
+                auto ending_trs = find_transitions_from_state(machine, ending);
+                if (!ending_trs.empty() && i < real_max_path_len - 1) {
+                    for (auto& end : ending_trs) {
+                        auto new_path = path;
+                        new_path.push_back(end);
+                        tmp_paths.push_back(new_path);
+                    }
+                } else {
+                    if (ending_trs.empty()) {
+                        result_paths.push_back(path);
+                    } else {
+                        for (auto& end : ending_trs) {
+                            auto new_path = path;
+                            new_path.push_back(end);
+                            result_paths.push_back(new_path);
+                        }
+                    }
+                }
             }
+            incomplete_and_deadending_paths.insert(path);
+        }
+    }
 
-            auto transitions_opt = transitions.get_child_optional(current_state);
-            if (!transitions_opt) return;
+    // построение итоговых последовательностей выходных символов
+    for (const auto& transition_list : result_paths) {
+        std::vector<std::string> string_vector;
+        for (const auto& transition : transition_list) {
+            std::stringstream ss;
+            ss << transition.input_symbol;
+            string_vector.push_back(ss.str());
+        }
+        sequences.push_back(string_vector);
+    }
 
-            for (const auto& transition : transitions_opt.get()) {
-                const std::string& input = transition.first;
-                const auto& transition_data = transition.second;
-                std::string next_state = transition_data.get<std::string>("state");
-
-                current_sequence.push_back(input);
-                dfs(next_state, current_sequence, remaining_len - 1);
-                current_sequence.pop_back();
-            }
-        };
-
-    std::vector<std::string> initial_sequence;
-    dfs(initial_state, initial_sequence, real_path_len);
+    return 0;
 }
 
 int main(int argc, char* argv[]) {

@@ -734,3 +734,21 @@ int find_max_path_len(const pt::ptree& transitions, const std::string& current_s
     visited.erase(current_state);
     return max_len;
 }
+
+std::vector<Transition> find_transitions_from_state(const pt::ptree& machine, const std::string& state) {
+    std::vector<Transition> transitions;
+    auto transitions_node = machine.get_child("transitions");
+    auto state_node_opt = transitions_node.get_child_optional(state);
+    if (state_node_opt) {
+        for (const auto& item : state_node_opt.get()) {
+            Transition t;
+            t.current_state = state;
+            t.input_symbol = item.first;
+            t.next_state = item.second.get<std::string>("state");
+            t.output_symbol = item.second.get<std::string>("output");
+            transitions.push_back(t);
+        }
+    }
+
+    return transitions;
+}
