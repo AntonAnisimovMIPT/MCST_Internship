@@ -93,25 +93,27 @@ auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector
             tmp_paths.push_back({trs});
         }
     } else {
+        if (initial_trs.empty()) {
+            auto msg = "No transitions available for state " + initial_state + "\n";
+            throw std::runtime_error(msg);
+        }
         for (auto& trs : initial_trs) {
             result_paths.push_back({trs});
+        }
+        for (const auto& transition_list : result_paths) {
+            std::vector<std::string> string_vector;
+            for (const auto& transition : transition_list) {
+                std::stringstream ss;
+                ss << transition.input_symbol;
+                string_vector.push_back(ss.str());
+            }
+            sequences.push_back(string_vector);
         }
         return 0;
     }
 
-    for (auto&& i : tmp_paths) {
-        auto elem = i.back();
-        std::cout << "Current State: " << elem.current_state
-                  << ", Next State: " << elem.next_state
-                  << ", Input Symbol: " << elem.input_symbol
-                  << ", Output Symbol: " << elem.output_symbol << std::endl;
-    }
-
-    std::cout << "debug 1\n";
     // теперь добавляем переходы (если они есть)
     for (size_t i = 1; i < real_max_path_len; i++) {
-        // std::vector<size_t> to_delete_indices;
-        // size_t index = 0;
 
         for (auto& path : tmp_paths) {
             auto it_f = incomplete_and_deadending_paths.find(path);
