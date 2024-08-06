@@ -690,6 +690,17 @@ void remove_non_unique_substrings(std::vector<std::vector<std::string>>& sequenc
         sequences.end());
 }
 
+std::unordered_set<std::string> get_all_states(const pt::ptree& machine) {
+    std::unordered_set<std::string> states;
+    for (const auto& item : machine.get_child("transitions")) {
+        states.insert(item.first);
+        for (const auto& transition : item.second) {
+            states.insert(transition.second.get<std::string>("state"));
+        }
+    }
+    return states;
+}
+
 int find_max_path_len(const pt::ptree& transitions, const std::string& current_state, std::unordered_map<std::string, int>& memo, int input_length, std::unordered_set<std::string>& visited) {
 
     if (visited.find(current_state) != visited.end()) {

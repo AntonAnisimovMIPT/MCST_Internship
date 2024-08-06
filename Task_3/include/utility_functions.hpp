@@ -105,6 +105,7 @@ void remove_sublists(std::vector<std::list<Transition>>& sequences);
 
 bool all_transitions_present(const std::vector<Transition>& transitions, const std::vector<std::list<Transition>>& result_sequences);
 std::vector<std::list<Transition>> filter(const std::vector<std::list<Transition>>& unfiltered_sequences, const std::vector<Transition>& all_transitions);
+std::unordered_set<std::string> get_all_states(const pt::ptree& machine);
 
 // для режима paths
 void remove_non_unique_substrings(std::vector<std::vector<std::string>>& sequences);

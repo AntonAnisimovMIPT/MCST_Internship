@@ -40,6 +40,12 @@ auto generate_state_sequences(const pt::ptree& machine, std::vector<std::vector<
 
 auto generate_transition_sequences(const pt::ptree& machine, std::vector<std::vector<std::string>>& sequences) {
 
+    // тривиальный случай
+    auto states = get_all_transitions(machine);
+    if (states.size() == 0) {
+        return 0;
+    }
+
     // Этап #1: Подготовка цепочек
     auto transitions = get_all_transitions(machine);
     auto grouped_transitions = group_transitions_by_state(transitions);

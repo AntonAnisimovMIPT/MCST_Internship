@@ -49,6 +49,16 @@ struct Transition {
     };
 };
 
+struct VectorHash {
+    std::size_t operator()(const std::vector<std::string>& v) const {
+        std::size_t seed = v.size();
+        for (const auto& str : v) {
+            seed ^= std::hash<std::string>{}(str) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+};
+
 namespace std {
 template <>
 struct hash<Transition> {

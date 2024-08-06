@@ -124,13 +124,18 @@ int find_max_path_len(const pt::ptree& transitions, const std::string& current_s
 }
 
 bool verify_etalon_in_sequences(const std::vector<std::vector<std::string>>& etalon, const std::vector<std::vector<std::string>>& sequences) {
-    for (const auto& etalon_vector : etalon) {
-        auto it = std::find(sequences.begin(), sequences.end(), etalon_vector);
+    if (etalon.size() > sequences.size()) {
+        return false;
+    }
 
-        if (it == sequences.end()) {
+    std::unordered_set<std::vector<std::string>, VectorHash> sequences_set(sequences.begin(), sequences.end());
+
+    for (const auto& etalon_vector : etalon) {
+        if (sequences_set.find(etalon_vector) == sequences_set.end()) {
             return false;
         }
     }
+
     return true;
 }
 

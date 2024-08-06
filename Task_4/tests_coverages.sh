@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$#" -lt 11 ]; then
-    echo "Invalid number of arguments passed to the script. Usage: <num_runs> <n_states_min> <n_states_max> <n_alph_in_min> <n_alph_in_max> <n_alph_out_min> <n_alph_out_max> <n_trans_out_min> <n_trans_out_max> <path_len> <output_dir>"
+    echo "Invalid number of arguments passed to the script. Usage: <num_runs> <n_states_min> <n_states_max> <n_alph_in_min> <n_alph_in_max> <n_alph_out_min> <n_alph_out_max> <n_trans_out_min> <n_trans_out_max> <output_dir> <path_len>"
     exit 1
 fi
 

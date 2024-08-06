@@ -129,6 +129,7 @@ int generate_machine(const generator_parameters& params) {
 
     // для хранения информации о неиспользованных входных символах
     std::unordered_map<std::string, std::vector<std::string>> unused_input_symbols;
+    std::string ac_tmp;
 
     // приступаем к генерации "на ходу"
     // изначально нужно понять, сколько исходящих переходов у каждого состояния
@@ -152,6 +153,7 @@ int generate_machine(const generator_parameters& params) {
             donors.push_back(all_qi[i]);
         } else {
             acceptors.push_back(all_qi[i]);
+            ac_tmp = all_qi[i];
         }
         output_transitions.insert(std::make_pair(all_qi[i], n_trans_out));
     }
@@ -293,22 +295,25 @@ int generate_machine(const generator_parameters& params) {
     // теперь, когда связный каркас сгенерирован, можно поперебрасывать оставшиеся переходы
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    // std::cout << "go to perebros\n";
     for (const auto& qi : all_qi) {
 
         // перебрасывать оставшиеся переходы можно только у тех состояний, у которых они остались
         if (unused_input_symbols.find(qi) != unused_input_symbols.end()) {
-
-            // Загружаем уже существующие переходы для состояния qi
+            // std::cout << "go to if 1\n";
+            //  Загружаем уже существующие переходы для состояния qi
             pt::ptree state_transitions;
             if (transitions.find(qi) != transitions.not_found()) {
                 state_transitions = transitions.get_child(qi);
             }
+            // std::cout << "go to if 2\n";
 
             while (!unused_input_symbols[qi].empty()) {
 
                 auto it_s = unused_input_symbols.find(qi);
                 std::string symb_in;
                 if (it_s != unused_input_symbols.end()) {
+                    // std::cout << "go to if 3\n";
 
                     symb_in = it_s->second.back();
                     it_s->second.pop_back();
@@ -319,23 +324,44 @@ int generate_machine(const generator_parameters& params) {
 
                 std::string symb_out = "w" + std::to_string(dist_symb_out(gen));
                 std::uniform_int_distribution<> dist_in_all_qi(0, all_qi.size() - 1);
-
+                // std::cout << "go to a\n";
                 auto next_state = all_qi[dist_in_all_qi(gen)];
                 output_transitions[qi] -= 1;
 
                 pt::ptree state_transition;
                 state_transition.put("state", next_state);
                 state_transition.put("output", symb_out);
-
+                // std::cout << "go to b\n";
                 state_transitions.add_child(symb_in, state_transition);
+                // std::cout << "go to c\n";
             }
 
             // Обновляем переходы для состояния qi в дереве transitions
             transitions.put_child(qi, state_transitions);
+            // std::cout << "go to put_child\n";
         }
+    }
+    /*
+    std::cout << "go to put initial\n";
+    std::cout << "groups size " << groups.size() << std::endl;
+    for (auto& [st, trs] : groups) {
+        std::cout << st << std::endl;
+    }
+    */
+    if (groups.size() == 0) {
+        tree.put("initial_state", ac_tmp);
+        tree.add_child("transitions", transitions);
+        std::ofstream output(params.output_file);
+        if (!output.is_open()) {
+            std::cerr << "Error opening output file!!!" << std::endl;
+            return 2;
+        }
+        pt::write_json(output, tree);
+        return 0;
     }
 
     tree.put("initial_state", groups.begin()->first);
+    // std::cout << "go to add transitions\n";
     tree.add_child("transitions", transitions);
 
     std::ofstream output(params.output_file);
