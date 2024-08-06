@@ -80,5 +80,7 @@ struct PathHash {
 std::unordered_set<Path, PathHash> get_all_paths(const pt::ptree& machine, int path_len);
 
 bool is_valid_path(const pt::ptree& machine, const std::vector<std::string>& path, const std::string& initial_state);
-
+int find_max_path_len(const pt::ptree& transitions, const std::string& current_state, std::unordered_map<std::string, int>& memo, int input_length, std::unordered_set<std::string>& visited);
+bool verify_etalon_in_sequences(const std::vector<std::vector<std::string>>& etalon, const std::vector<std::vector<std::string>>& sequences);
+std::vector<Transition> find_transitions_from_state(const pt::ptree& machine, const std::string& state);
 #endif

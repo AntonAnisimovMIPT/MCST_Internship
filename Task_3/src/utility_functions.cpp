@@ -691,14 +691,13 @@ void remove_non_unique_substrings(std::vector<std::vector<std::string>>& sequenc
 }
 
 int find_max_path_len(const pt::ptree& transitions, const std::string& current_state, std::unordered_map<std::string, int>& memo, int input_length, std::unordered_set<std::string>& visited) {
-    // Проверка на зацикливание
+
     if (visited.find(current_state) != visited.end()) {
         return input_length;
     }
 
     visited.insert(current_state);
 
-    // Проверка, вычисляли ли уже максимальную длину пути для этого состояния
     if (memo.find(current_state) != memo.end()) {
         visited.erase(current_state);
         return memo[current_state];
@@ -707,20 +706,17 @@ int find_max_path_len(const pt::ptree& transitions, const std::string& current_s
     int max_len = 0;
     auto transitions_opt = transitions.get_child_optional(current_state);
     if (!transitions_opt) {
-        // Если нет переходов из текущего состояния, длина пути равна 0
         visited.erase(current_state);
         return max_len;
     }
 
     for (const auto& transition : transitions_opt.get()) {
-        // Проверка наличия следующего состояния
         if (!transition.second.get_optional<std::string>("state")) {
-            continue; // Если ключа "state" нет, пропускаем
+            continue;
         }
 
         std::string next_state = transition.second.get<std::string>("state");
-        // Рекурсивный вызов для следующего состояния
-        // для предотвращения бесконечной рекурсии
+
         if (max_len == input_length) {
             return input_length;
         }
@@ -729,7 +725,6 @@ int find_max_path_len(const pt::ptree& transitions, const std::string& current_s
         max_len = std::max(max_len, len);
     }
 
-    // Сохраняем результат в memo, чтобы избежать повторных вычислений
     memo[current_state] = max_len;
     visited.erase(current_state);
     return max_len;

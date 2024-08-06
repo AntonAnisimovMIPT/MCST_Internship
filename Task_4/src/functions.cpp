@@ -83,3 +83,71 @@ bool is_valid_path(const pt::ptree& machine, const std::vector<std::string>& pat
     }
     return true;
 }
+
+int find_max_path_len(const pt::ptree& transitions, const std::string& current_state, std::unordered_map<std::string, int>& memo, int input_length, std::unordered_set<std::string>& visited) {
+    if (visited.find(current_state) != visited.end()) {
+        return input_length;
+    }
+
+    visited.insert(current_state);
+
+    if (memo.find(current_state) != memo.end()) {
+        visited.erase(current_state);
+        return memo[current_state];
+    }
+
+    int max_len = 0;
+    auto transitions_opt = transitions.get_child_optional(current_state);
+    if (!transitions_opt) {
+        visited.erase(current_state);
+        return max_len;
+    }
+
+    for (const auto& transition : transitions_opt.get()) {
+        if (!transition.second.get_optional<std::string>("state")) {
+            continue;
+        }
+
+        std::string next_state = transition.second.get<std::string>("state");
+
+        if (max_len == input_length) {
+            return input_length;
+        }
+
+        int len = 1 + find_max_path_len(transitions, next_state, memo, input_length, visited);
+        max_len = std::max(max_len, len);
+    }
+
+    memo[current_state] = max_len;
+    visited.erase(current_state);
+    return max_len;
+}
+
+bool verify_etalon_in_sequences(const std::vector<std::vector<std::string>>& etalon, const std::vector<std::vector<std::string>>& sequences) {
+    for (const auto& etalon_vector : etalon) {
+        auto it = std::find(sequences.begin(), sequences.end(), etalon_vector);
+
+        if (it == sequences.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<Transition> find_transitions_from_state(const pt::ptree& machine, const std::string& state) {
+    std::vector<Transition> transitions;
+    auto transitions_node = machine.get_child("transitions");
+    auto state_node_opt = transitions_node.get_child_optional(state);
+    if (state_node_opt) {
+        for (const auto& item : state_node_opt.get()) {
+            Transition t;
+            t.current_state = state;
+            t.input_symbol = item.first;
+            t.next_state = item.second.get<std::string>("state");
+            t.output_symbol = item.second.get<std::string>("output");
+            transitions.push_back(t);
+        }
+    }
+
+    return transitions;
+}
