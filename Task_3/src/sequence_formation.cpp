@@ -114,6 +114,7 @@ auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector
 
     // теперь добавляем переходы (если они есть)
     for (size_t i = 1; i < real_max_path_len; i++) {
+        std::vector<std::list<Transition>> new_paths;
 
         for (auto& path : tmp_paths) {
             auto it_f = incomplete_and_deadending_paths.find(path);
@@ -124,7 +125,7 @@ auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector
                     for (auto& end : ending_trs) {
                         auto new_path = path;
                         new_path.push_back(end);
-                        tmp_paths.push_back(new_path);
+                        new_paths.push_back(new_path);
                     }
                 } else {
                     if (ending_trs.empty()) {
@@ -140,6 +141,7 @@ auto generate_path_sequences(const pt::ptree& machine, int path_len, std::vector
             }
             incomplete_and_deadending_paths.insert(path);
         }
+        tmp_paths.insert(tmp_paths.end(), new_paths.begin(), new_paths.end());
     }
 
     // построение итоговых последовательностей выходных символов
