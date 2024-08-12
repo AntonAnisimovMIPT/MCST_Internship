@@ -1,40 +1,20 @@
 #include "functions.hpp"
 
-enum class State {
-    INACTION,
-    SEARCHING,
-    ADDING,
-    OVERWRITING
-};
-
-enum class Output {
-    DEFAULT,
-    FOUND,
-    NOT_FOUND,
-    ADDED,
-    OVERWRITTEN
-};
-
-const std::vector<std::string> state_names = {
-    "INACTION",
-    "SEARCHING",
-    "ADDING",
-    "OVERWRITING"};
-
-const std::vector<std::string> output_names = {
-    "FOUND",
-    "NOT_FOUND",
-    "ADDED",
-    "OVERWRITTEN"};
-
 class Cache {
   public:
     Cache(int cache_size, int block_size, pt::ptree& log_tree)
-        : cache_size_(cache_size), block_size_(block_size), state(State::INACTION), log_tree_(log_tree) {
+        : cache_size_(cache_size), block_size_(block_size), log_tree_(log_tree) {
         cache_lines_.resize(cache_size, CacheLine(block_size));
     }
 
     void search(int tag) {
+        Transition rev_tr;
+        rev_tr.current_state = "INACTION";
+        rev_tr.next_state = "SEARCHING";
+        rev_tr.input = "sr";
+        rev_tr.output = " ";
+        add_transition_to_log(rev_tr);
+
         Transition tr;
         tr.current_state = "SEARCHING";
         tr.next_state = "INACTION";
@@ -52,6 +32,13 @@ class Cache {
     }
 
     void add(int tag, const std::vector<int>& data_block) {
+        Transition rev_tr;
+        rev_tr.current_state = "INACTION";
+        rev_tr.next_state = "ADDING";
+        rev_tr.input = "ad";
+        rev_tr.output = " ";
+        add_transition_to_log(rev_tr);
+
         Transition tr;
         tr.current_state = "ADDING";
         tr.next_state = "INACTION";
@@ -75,6 +62,13 @@ class Cache {
     }
 
     void overwrite_LRU(int tag, const std::vector<int>& data_block) {
+        Transition rev_tr;
+        rev_tr.current_state = "INACTION";
+        rev_tr.next_state = "OVERWRITING";
+        rev_tr.input = "ow";
+        rev_tr.output = " ";
+        add_transition_to_log(rev_tr);
+
         Transition tr;
         tr.current_state = "OVERWRITING";
         tr.next_state = "INACTION";
@@ -95,42 +89,35 @@ class Cache {
     int cache_size_;
     int block_size_;
     std::vector<CacheLine> cache_lines_;
-    State state;
     pt::ptree& log_tree_;
 
     void add_transition_to_log(const Transition& tr) {
-        // Проверка и добавление начального состояния
+
         if (log_tree_.empty()) {
             log_tree_.put("initial_state", tr.current_state);
         }
 
-        // Попытка найти существующий узел для текущего состояния
         auto state_node_opt = log_tree_.get_child_optional("transitions." + tr.current_state);
 
         pt::ptree state_node;
         if (state_node_opt) {
             state_node = *state_node_opt;
         } else {
-            // Если узел не найден, создаем новый
             log_tree_.put_child("transitions." + tr.current_state, state_node);
         }
 
-        // Проверяем, есть ли уже поддерево для input символа
         auto input_node_opt = state_node.get_child_optional(tr.input);
 
         pt::ptree input_node;
         if (input_node_opt) {
             input_node = *input_node_opt;
         } else {
-            // Если поддерево для символа ввода не найдено, создаем новое
             state_node.put_child(tr.input, input_node);
         }
 
-        // Обновляем информацию о next state и output
         input_node.put("state", tr.next_state);
         input_node.put("output", tr.output);
 
-        // Сохраняем обновленные данные обратно в дерево
         state_node.put_child(tr.input, input_node);
         log_tree_.put_child("transitions." + tr.current_state, state_node);
     }

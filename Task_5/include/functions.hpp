@@ -11,9 +11,6 @@
 
 namespace pt = boost::property_tree;
 
-enum class State;
-enum class Output;
-
 struct CacheLine {
     std::vector<int> data_block;
     int tag;
