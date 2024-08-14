@@ -1,0 +1,33 @@
+digraph cache_emulations {
+    rankdir=LR;
+
+    INACTION [label="INACTION", shape=circle];
+    CACHE_FIND [label="CACHE_FIND", shape=circle];
+    CacheFoundR [label="CACHE_FOUND (R)", shape=circle];
+    CacheFoundW [label="CACHE_FOUND (W)", shape=circle];
+    CacheMissR [label="CACHE_MISSED (R)", shape=circle];
+    CacheMissW [label="CACHE_MISSED (W)", shape=circle];
+    ReadFromMemory [label="READ_RAM", shape=circle];
+    WriteToCache [label="WRITE_CACHE", shape=circle];
+    WriteToMemory [label="WRITE_RAM", shape=circle];
+    CacheRead [label="CACHE_READ", shape=circle];
+
+    INACTION -> CACHE_FIND [label="R or W"];
+    
+    CACHE_FIND -> CacheFoundR [label="isInCache, R"];
+    CACHE_FIND -> CacheFoundW [label="isInCache, W"];
+    CACHE_FIND -> CacheMissR [label="!isInCache, R"];
+    CACHE_FIND -> CacheMissW [label="!isInCache, W"];
+
+    CacheFoundR -> CacheRead;
+    CacheRead -> INACTION;
+    CacheFoundW -> WriteToCache;
+
+    CacheMissR -> ReadFromMemory;
+    ReadFromMemory -> WriteToCache;
+    
+    CacheMissW -> WriteToMemory;
+    WriteToMemory -> WriteToCache;
+    
+    WriteToCache -> INACTION;
+}
