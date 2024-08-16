@@ -9,8 +9,9 @@ digraph cache_emulations {
     CacheMissW [label="CACHE_MISSED (W)", shape=circle];
     ReadFromMemory [label="READ_RAM", shape=circle];
     WriteToCache [label="WRITE_CACHE", shape=circle];
-    WriteToMemory [label="WRITE_RAM", shape=circle];
+    //WriteToMemory [label="WRITE_RAM", shape=circle];
     CacheRead [label="CACHE_READ", shape=circle];
+    EvictBlock [label="EVICT_BLOCK", shape=circle];
 
     INACTION -> CACHE_FIND [label="R or W"];
     
@@ -19,15 +20,20 @@ digraph cache_emulations {
     CACHE_FIND -> CacheMissR [label="!isInCache, R"];
     CACHE_FIND -> CacheMissW [label="!isInCache, W"];
 
-    CacheFoundR -> CacheRead;
+    CacheFoundR -> CacheRead [label="Provide data to core"];
     CacheRead -> INACTION;
-    CacheFoundW -> WriteToCache;
+    CacheFoundW -> WriteToCache [label="Receive data from core"];
 
-    CacheMissR -> ReadFromMemory;
-    ReadFromMemory -> WriteToCache;
-    
-    CacheMissW -> WriteToMemory;
-    WriteToMemory -> WriteToCache;
-    
+    CacheMissR -> ReadFromMemory [label="Fetch data from RAM"];
+    ReadFromMemory -> WriteToCache [label="Set is not full. Store fetched block in cache"];
+    ReadFromMemory -> EvictBlock [label="Set full!!! Need to evict"];
+
+    CacheMissW -> WriteToCache [label="Set is not full. Store new block in cache"];
+    CacheMissW -> EvictBlock [label="Set full!!! Need to evict"];
+
     WriteToCache -> INACTION;
+
+    
+    EvictBlock -> WriteToCache [label="Evict block to cache"];
+
 }
