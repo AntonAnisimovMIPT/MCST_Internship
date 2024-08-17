@@ -10,7 +10,7 @@ digraph cache_emulations {
     ReadFromMemory [label="READ_RAM", shape=circle];
     WriteToCache [label="WRITE_CACHE", shape=circle];
     //WriteToMemory [label="WRITE_RAM", shape=circle];
-    CacheRead [label="CACHE_READ", shape=circle];
+    CacheRead [label="CACHE_HAS_BEEN_READ", shape=circle];
     EvictBlock [label="EVICT_BLOCK", shape=circle];
 
     INACTION -> CACHE_FIND [label="R or W"];
@@ -20,8 +20,8 @@ digraph cache_emulations {
     CACHE_FIND -> CacheMissR [label="!isInCache, R"];
     CACHE_FIND -> CacheMissW [label="!isInCache, W"];
 
-    CacheFoundR -> CacheRead [label="Provide data to core"];
-    CacheRead -> INACTION;
+    CacheFoundR -> CacheRead  [label="Reading cache"];
+    CacheRead -> INACTION [label="Provide data to core"];
     CacheFoundW -> WriteToCache [label="Receive data from core"];
 
     CacheMissR -> ReadFromMemory [label="Fetch data from RAM"];
