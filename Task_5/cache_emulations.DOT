@@ -9,7 +9,7 @@ digraph cache_emulations {
     CacheMissW [label="CACHE_MISSED (W)", shape=circle];
     ReadFromMemory [label="READ_RAM", shape=circle];
     WriteToCache [label="WRITE_CACHE", shape=circle];
-    //WriteToMemory [label="WRITE_RAM", shape=circle];
+    WriteToMemory [label="WRITE_RAM", shape=circle];
     CacheRead [label="CACHE_HAS_BEEN_READ", shape=circle];
     EvictBlock [label="EVICT_BLOCK", shape=circle];
 
@@ -33,7 +33,7 @@ digraph cache_emulations {
 
     WriteToCache -> INACTION;
 
-    
-    EvictBlock -> WriteToCache [label="Evict block to cache"];
+    EvictBlock -> WriteToMemory [label="Evict block to RAM"];
+    WriteToMemory -> WriteToCache [label="Write new block to cache"];
 
 }
