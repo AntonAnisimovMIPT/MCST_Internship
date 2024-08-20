@@ -1,7 +1,7 @@
 #include "functions.hpp"
 
 CacheLine::CacheLine()
-    : tag(0), data(0), last_used(0), valid(false) {}
+    : tag(0), data(0), last_used(0), valid(false), modif(false) {}
 
 CacheSet::CacheSet(int associativity) {
     lines.resize(associativity);
@@ -89,18 +89,22 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
     } else {
         std::cout << "Cache miss. Fetching from RAM and updating cache." << std::endl;
 
+        if (line.valid && line.modif) {
+            std::cout << "Evicting line. Writing to RAM: address=0x" << std::hex << std::setw(8) << std::setfill('0') << addr << " data=0x" << std::setw(8) << std::setfill('0') << line.data << std::dec << std::endl;
+        }
+
         auto memory_data = expected_data;
         std::cout << "RAM read: address=0x" << std::hex << std::setw(8) << std::setfill('0') << addr << " data=0x" << std::setw(8) << std::setfill('0') << memory_data << std::dec << std::endl;
 
-        auto victim_line_index = sets[index].find_victim();
-        auto& victim_line = sets[index].get_line(victim_line_index);
+        auto& victim_line = sets[index].get_line(way);
 
         victim_line.tag = tag;
         victim_line.data = memory_data;
         victim_line.valid = true;
+        victim_line.modif = false;
         victim_line.last_used = access_counter;
 
-        std::cout << "Stored in cache: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag << " index=" << std::dec << index << " way=" << victim_line_index << std::endl;
+        std::cout << "Stored in cache: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag << " index=" << std::dec << index << " way=" << way << std::endl;
         std::cout << "Data returned to core: 0x" << std::hex << std::setw(8) << std::setfill('0') << memory_data << std::dec << std::endl;
         std::cout << "----------\n";
     }
@@ -119,24 +123,24 @@ void Cache::write(uint32_t addr, uint32_t data) {
     if (line.valid && line.tag == tag) {
         line.data = data;
         line.last_used = access_counter;
+        line.modif = true;
 
         std::cout << "Cache hit: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag << " index=" << std::dec << index << " way=" << way << std::endl;
         std::cout << "Data written in cache: 0x" << std::hex << std::setw(8) << std::setfill('0') << data << std::dec << std::endl;
         std::cout << "----------\n";
     } else {
-        std::cout << "Cache miss. Writing to RAM and updating cache." << std::endl;
+        if (line.valid && line.modif) {
+            std::cout << "Evicting line. Writing to RAM: address=0x" << std::hex << std::setw(8) << std::setfill('0') << addr << " data=0x" << std::setw(8) << std::setfill('0') << line.data << std::dec << std::endl;
+        }
 
-        std::cout << "RAM write: address=0x" << std::hex << std::setw(8) << std::setfill('0') << addr << " data=0x" << std::setw(8) << std::setfill('0') << data << std::dec << std::endl;
-
-        auto victim_line_index = sets[index].find_victim();
-        auto& victim_line = sets[index].get_line(victim_line_index);
-
+        auto& victim_line = sets[index].get_line(way);
         victim_line.tag = tag;
         victim_line.data = data;
         victim_line.valid = true;
+        victim_line.modif = true;
         victim_line.last_used = access_counter;
 
-        std::cout << "Stored in cache: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag << " index=" << std::dec << index << " way=" << victim_line_index << std::endl;
+        std::cout << "Stored in cache: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag << " index=" << std::dec << index << " way=" << way << std::endl;
         std::cout << "----------\n";
     }
 }

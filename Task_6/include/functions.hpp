@@ -22,6 +22,7 @@ struct CacheLine {
     std::uint32_t data;
     std::uint32_t last_used;
     bool valid;
+    bool modif;
 
     CacheLine();
 };
