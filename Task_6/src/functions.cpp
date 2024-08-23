@@ -147,7 +147,7 @@ void Cache::write(uint32_t addr, uint32_t data) {
                       << " tag=0x" << line.tag
                       << " index=" << std::dec << index
                       << " way=" << way
-                      << " data=0x" << line.data << std::endl;
+                      << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
         } else {
             std::cout << "Evicting unmodified line: "
                       << "tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
