@@ -95,7 +95,7 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
             if (line.modif) {
                 std::cout << "Evicting modified line: "
                           << "address=0x" << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
-                          << " tag=0x" << line.tag
+                          << " tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
                           << " index=" << std::dec << index
                           << " way=" << way
                           << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::dec << std::endl;
@@ -144,7 +144,7 @@ void Cache::write(uint32_t addr, uint32_t data) {
         if (line.modif) {
             std::cout << "Evicting modified line: "
                       << "address=0x" << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
-                      << " tag=0x" << line.tag
+                      << " tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
                       << " index=" << std::dec << index
                       << " way=" << way
                       << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
