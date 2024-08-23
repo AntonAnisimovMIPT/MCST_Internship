@@ -70,47 +70,65 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
     auto way = get_way(addr);
     access_counter++;
 
-    std::cout << "Read from addr: 0x" << std::hex << std::setw(8) << std::setfill('0') << addr << std::dec << std::endl;
+    std::cout << "Read from addr: 0x"
+              << std::hex << std::setw(8) << std::setfill('0') << addr << std::endl;
 
     auto& line = sets[index].get_line(way);
 
     if (line.valid && line.tag == tag) {
         line.last_used = access_counter;
 
-        std::cout << "Cache hit: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag
-                  << " index=" << index
-                  << " way=" << way << std::dec << std::endl;
+        std::cout << "Cache hit: tag=0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << tag
+                  << " index="
+                  << std::dec << index
+                  << " way="
+                  << std::dec << way << std::endl;
 
         if (line.data != expected_data) {
-            std::cerr << "Data mismatch! Expected: 0x" << std::hex << std::setw(8) << std::setfill('0') << expected_data
-                      << ", Found: 0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
+            std::cerr << "Data mismatch! Expected: 0x"
+                      << std::hex << std::setw(8) << std::setfill('0') << expected_data
+                      << ", Found: 0x"
+                      << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
             exit(1);
         }
 
-        std::cout << "Data returned to core: 0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::dec << std::endl;
+        std::cout << "Data returned to core: 0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
+
         std::cout << "----------\n";
     } else {
         if (line.valid) {
             auto evicted_addr = (line.tag << (index_bits + offset_bits)) | (index << offset_bits);
             if (line.modif) {
                 std::cout << "Evicting modified line: "
-                          << "address=0x" << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
-                          << " tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
-                          << " index=" << std::dec << index
-                          << " way=" << way
-                          << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::dec << std::endl;
+                          << "address=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
+                          << " tag=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << line.tag
+                          << " index="
+                          << std::dec << index
+                          << " way="
+                          << std::dec << way
+                          << " data=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
 
             } else {
                 std::cout << "Evicting unmodified line: "
-                          << "tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
-                          << " index=" << std::dec << index
-                          << " way=" << way << std::endl;
+                          << "tag=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << line.tag
+                          << " index="
+                          << std::dec << index
+                          << " way="
+                          << way << std::endl;
             }
         }
 
         auto memory_data = expected_data;
-        std::cout << "RAM read: address=0x" << std::hex << std::setw(8) << std::setfill('0') << addr
-                  << " data=0x" << memory_data << std::dec << std::endl;
+        std::cout << "RAM read: address=0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << addr
+                  << " data=0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << memory_data << std::endl;
 
         line.tag = tag;
         line.data = memory_data;
@@ -118,11 +136,15 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
         line.modif = false;
         line.last_used = access_counter;
 
-        std::cout << "Stored in cache: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag
-                  << " index=" << std::dec << index
-                  << " way=" << way << std::endl;
+        std::cout << "Stored in cache: tag=0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << tag
+                  << " index="
+                  << std::dec << index
+                  << " way=" << std::dec << way << std::endl;
 
-        std::cout << "Data returned to core: 0x" << std::hex << std::setw(8) << std::setfill('0') << memory_data << std::dec << std::endl;
+        std::cout << "Data returned to core: 0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << memory_data << std::endl;
+
         std::cout << "----------\n";
     }
 }
@@ -133,8 +155,10 @@ void Cache::write(uint32_t addr, uint32_t data) {
     auto way = get_way(addr);
     access_counter++;
 
-    std::cout << "Write to addr: 0x" << std::hex << std::setw(8) << std::setfill('0') << addr
-              << " data=0x" << std::setw(8) << data << std::dec << std::endl;
+    std::cout << "Write to addr: 0x"
+              << std::hex << std::setw(8) << std::setfill('0') << addr
+              << " data=0x"
+              << std::hex << std::setw(8) << std::setfill('0') << data << std::endl;
 
     auto& line = sets[index].get_line(way);
 
@@ -143,16 +167,24 @@ void Cache::write(uint32_t addr, uint32_t data) {
 
         if (line.modif) {
             std::cout << "Evicting modified line: "
-                      << "address=0x" << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
-                      << " tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
-                      << " index=" << std::dec << index
-                      << " way=" << way
-                      << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
+                      << "address=0x"
+                      << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
+                      << " tag=0x"
+                      << std::hex << std::setw(8) << std::setfill('0') << line.tag
+                      << " index="
+                      << std::dec << index
+                      << " way="
+                      << std::dec << way
+                      << " data=0x"
+                      << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
         } else {
             std::cout << "Evicting unmodified line: "
-                      << "tag=0x" << std::hex << std::setw(8) << std::setfill('0') << line.tag
-                      << " index=" << std::dec << index
-                      << " way=" << way << std::dec << std::endl;
+                      << "tag=0x"
+                      << std::hex << std::setw(8) << std::setfill('0') << line.tag
+                      << " index="
+                      << std::dec << index
+                      << " way="
+                      << std::dec << way << std::endl;
         }
     }
 
@@ -162,8 +194,12 @@ void Cache::write(uint32_t addr, uint32_t data) {
     line.modif = true;
     line.last_used = access_counter;
 
-    std::cout << "Stored in cache: tag=0x" << std::hex << std::setw(8) << std::setfill('0') << tag
-              << " index=" << std::dec << index
-              << " way=" << way << std::endl;
+    std::cout << "Stored in cache: tag=0x"
+              << std::hex << std::setw(8) << std::setfill('0') << tag
+              << " index="
+              << std::dec << index
+              << " way="
+              << std::dec << way << std::endl;
+
     std::cout << "----------\n";
 }
