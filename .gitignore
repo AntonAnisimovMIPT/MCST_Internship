@@ -1,6 +1,7 @@
 build/
 tests/
 tests_covers/
+tests_gen/
 .vscode/
 *.DOT
 *.json
