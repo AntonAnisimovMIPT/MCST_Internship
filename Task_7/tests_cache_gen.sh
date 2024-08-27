@@ -33,18 +33,18 @@ for i in $(seq 1 "$NUM_TESTS"); do
     ./build/cache_generator --config "$CACHE_DESCR" --seed "$SEED" --num_operations "$NUM_OPERATIONS" --read_prob "$PROB" --output "$OUTPUT_FILE_GEN"
     
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to generate test $i with seed $SEED."
-        exit 1
+        echo "Test $i error: Failed to generate test $i with seed $SEED."
+        continue  
     fi
 
     ../Task_6/build/cache_modelling --config "$CACHE_DESCR" --input "$OUTPUT_FILE_GEN" > "$OUTPUT_FILE_TRACE"
     
     if [ $? -ne 0 ]; then
-        echo "Error: Cache simulator failed on test $i with seed $SEED."
-        exit 1
+        echo "Test $i error: Cache simulator failed on test $i with seed $SEED."
+        continue 
     fi
 
     echo "Test $i with seed $SEED completed successfully."
 done
 
-echo "All tests completed successfully."
+echo "End."

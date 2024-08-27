@@ -152,7 +152,6 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
 void Cache::write(uint32_t addr, uint32_t data) {
     auto index = get_index(addr);
     auto tag = get_tag(addr);
-    auto way = get_way(addr);
     access_counter++;
 
     std::cout << "Write to addr: 0x"
@@ -160,46 +159,72 @@ void Cache::write(uint32_t addr, uint32_t data) {
               << " data=0x"
               << std::hex << std::setw(8) << std::setfill('0') << data << std::endl;
 
-    auto& line = sets[index].get_line(way);
+    // существует ли уже строка с этим tag в наборе
+    auto way = sets[index].find_line(tag);
+    if (way != -1) {
+        // если строка с этим tag найдена
+        auto& line = sets[index].get_line(way);
 
-    if (line.valid) {
-        auto evicted_addr = (line.tag << (index_bits + offset_bits)) | (index << offset_bits);
+        line.data = data;
+        line.modif = true;
+        line.last_used = access_counter;
 
-        if (line.modif) {
-            std::cout << "Evicting modified line: "
-                      << "address=0x"
-                      << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
-                      << " tag=0x"
-                      << std::hex << std::setw(8) << std::setfill('0') << line.tag
-                      << " index="
-                      << std::dec << index
-                      << " way="
-                      << std::dec << way
-                      << " data=0x"
-                      << std::hex << std::setw(8) << std::setfill('0') << line.data << std::endl;
-        } else {
-            std::cout << "Evicting unmodified line: "
-                      << "tag=0x"
-                      << std::hex << std::setw(8) << std::setfill('0') << line.tag
-                      << " index="
-                      << std::dec << index
-                      << " way="
-                      << std::dec << way << std::endl;
+        std::cout << "Cache hit - updated existing line: tag=0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << tag
+                  << " index="
+                  << std::dec << index
+                  << " way="
+                  << std::dec << way << std::endl;
+
+        std::cout << "----------\n";
+    } else {
+        // tag не найден, значит производим вытеснение
+        way = sets[index].find_victim();
+        auto& evicted_line = sets[index].get_line(way);
+
+        if (evicted_line.valid) {
+            auto evicted_addr = (evicted_line.tag << (index_bits + offset_bits)) | (index << offset_bits);
+            if (evicted_line.modif) {
+                std::cout << "Evicting modified line: "
+                          << "address=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
+                          << " tag=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << evicted_line.tag
+                          << " index="
+                          << std::dec << index
+                          << " way="
+                          << std::dec << way
+                          << " data=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << evicted_line.data << std::endl;
+
+                std::cout << "Writing back to RAM: address=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << evicted_addr
+                          << " data=0x"
+                          << std::hex << std::setfill('0') << evicted_line.data << std::endl;
+            } else {
+                std::cout << "Evicting unmodified line: "
+                          << "tag=0x"
+                          << std::hex << std::setw(8) << std::setfill('0') << evicted_line.tag
+                          << " index="
+                          << std::dec << index
+                          << " way="
+                          << std::dec << way << std::endl;
+            }
         }
+
+        evicted_line.tag = tag;
+        evicted_line.data = data;
+        evicted_line.valid = true;
+        evicted_line.modif = true;
+        evicted_line.last_used = access_counter;
+
+        std::cout << "Stored in cache: tag=0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << tag
+                  << " index="
+                  << std::dec << index
+                  << " way="
+                  << std::dec << way << std::endl;
+
+        std::cout << "----------\n";
     }
-
-    line.tag = tag;
-    line.data = data;
-    line.valid = true;
-    line.modif = true;
-    line.last_used = access_counter;
-
-    std::cout << "Stored in cache: tag=0x"
-              << std::hex << std::setw(8) << std::setfill('0') << tag
-              << " index="
-              << std::dec << index
-              << " way="
-              << std::dec << way << std::endl;
-
-    std::cout << "----------\n";
 }

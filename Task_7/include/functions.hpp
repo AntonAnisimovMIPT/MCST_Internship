@@ -30,14 +30,19 @@ class Generator {
   private:
     CacheConfig cache_config;
     std::mt19937 gen;
+    std::uniform_int_distribution<std::uint32_t> set_dist;
+    std::uniform_int_distribution<std::uint32_t> tag_dist;
+    std::uniform_real_distribution<double> prob_dist;
 
     CacheConfig load_cache_config(const std::string& config_file);
     std::string generate_operation(double prob);
     std::uint32_t generate_address();
     std::uint32_t generate_data();
+    std::uint32_t get_random_initialized_address();
 
     std::unordered_map<std::uint32_t, std::uint32_t> history;
-    std::unordered_map<std::uint32_t, bool> valid_entries;
+
+    bool first_operation;
 };
 
 #endif
