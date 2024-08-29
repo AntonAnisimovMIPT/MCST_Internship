@@ -2,11 +2,11 @@
 
 Generator::Generator(const std::string& config_file, unsigned int seed)
     : gen(seed),
-      set_dist(0, (cache_config.cache_size / cache_config.line_size) - 1),
       tag_dist(0, 0xFFFFFFF),
       prob_dist(0.0, 1.0),
       first_operation(true) {
     cache_config = load_cache_config(config_file);
+    set_dist = std::uniform_int_distribution<unsigned int>(0, (cache_config.cache_size / cache_config.line_size) - 1);
 }
 
 CacheConfig Generator::load_cache_config(const std::string& config_file) {
