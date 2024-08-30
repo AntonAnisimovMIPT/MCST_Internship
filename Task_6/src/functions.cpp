@@ -74,13 +74,13 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
               << std::hex << std::setw(8) << std::setfill('0') << addr << std::endl;
 
     auto& line = sets[index].get_line(way);
+    if (!line.initialized) {
+        std::cerr << "Error: Attempt to read uninitialized data at address: 0x"
+                  << std::hex << std::setw(8) << std::setfill('0') << addr << std::endl;
+        exit(1);
+    }
 
     if (line.valid && line.tag == tag) {
-        if (!line.initialized) {
-            std::cerr << "Error: Attempt to read uninitialized data at address: 0x"
-                      << std::hex << std::setw(8) << std::setfill('0') << addr << std::endl;
-            exit(1);
-        }
 
         line.last_used = access_counter;
 
