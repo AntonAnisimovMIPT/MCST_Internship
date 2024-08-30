@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <random>
 
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
@@ -23,6 +24,7 @@ struct CacheLine {
     std::uint32_t last_used;
     bool valid;
     bool modif;
+    bool initialized;
 
     CacheLine();
 };

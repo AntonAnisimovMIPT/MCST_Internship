@@ -1,7 +1,7 @@
 #include "functions.hpp"
 
 CacheLine::CacheLine()
-    : tag(0), data(0), last_used(0), valid(false), modif(false) {}
+    : tag(0), data(0), last_used(0), valid(false), modif(false), initialized(false) {}
 
 CacheSet::CacheSet(int associativity) {
     lines.resize(associativity);
@@ -76,6 +76,7 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
     auto& line = sets[index].get_line(way);
 
     if (line.valid && line.tag == tag) {
+
         line.last_used = access_counter;
 
         std::cout << "Cache hit: tag=0x"
@@ -124,14 +125,17 @@ void Cache::read(uint32_t addr, uint32_t expected_data) {
             }
         }
 
-        auto memory_data = expected_data;
+        std::mt19937 generator(std::random_device{}());
+        std::uniform_int_distribution<std::uint32_t> distribution(0, 0xFFFFFFFF);
+
+        auto memory_data = distribution(generator);
         std::cout << "RAM read: address=0x"
                   << std::hex << std::setw(8) << std::setfill('0') << addr
                   << " data=0x"
                   << std::hex << std::setw(8) << std::setfill('0') << memory_data << std::endl;
 
         line.tag = tag;
-        line.data = memory_data;
+        line.data = expected_data;
         line.valid = true;
         line.modif = false;
         line.last_used = access_counter;
@@ -167,6 +171,7 @@ void Cache::write(uint32_t addr, uint32_t data) {
 
         line.data = data;
         line.modif = true;
+        line.initialized = true;
         line.last_used = access_counter;
 
         std::cout << "Cache hit - updated existing line: tag=0x"
