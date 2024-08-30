@@ -39,6 +39,7 @@ class Generator {
     std::uint32_t generate_address();
     std::uint32_t generate_data();
     std::uint32_t get_random_initialized_address();
+    std::uint32_t generate_unique_address_for_set(unsigned int set_index, std::unordered_map<std::uint32_t, std::uint32_t>& history);
 
     std::unordered_map<std::uint32_t, std::uint32_t> history;
 

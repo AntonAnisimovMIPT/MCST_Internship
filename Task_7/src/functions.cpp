@@ -28,6 +28,7 @@ std::string Generator::generate_operation(double prob) {
     std::ostringstream oss;
 
     if (first_operation) {
+        // первая операция - всегда запись
         addr = generate_address();
         data = generate_data();
         history[addr] = data;
@@ -55,14 +56,47 @@ std::string Generator::generate_operation(double prob) {
 }
 
 std::uint32_t Generator::generate_address() {
-    // Генерируем адреса так, чтобы они попадали в один и тот же набор
-    auto set_index = set_dist(gen);
+    // проверка наличия заполненных наборов
+    std::unordered_map<unsigned int, std::vector<std::uint32_t>> set_addresses;
+    for (const auto& [addr, data] : history) {
+        unsigned int set_index = (addr / cache_config.line_size) % (cache_config.cache_size / cache_config.line_size);
+        set_addresses[set_index].push_back(addr);
+    }
 
-    // Генерируем разные теги для проверки замещения
-    auto tag = tag_dist(gen);
+    if (!set_addresses.empty()) {
+        // случайно выбираем заполненный набор
+        std::vector<unsigned int> filled_sets;
+        for (const auto& [set_index, _] : set_addresses) {
+            filled_sets.push_back(set_index);
+        }
+        std::uniform_int_distribution<> set_dist(0, filled_sets.size() - 1);
+        unsigned int set_index = filled_sets[set_dist(gen)];
 
-    // Составляем адрес, который попадает в выбранный набор
-    return (set_index * cache_config.line_size) | (tag << (cache_config.line_size * 4));
+        // генерируем уникальный адрес для данного набора, который сделает вытеснение
+        return generate_unique_address_for_set(set_index, history);
+    } else {
+        // если заполненных нет, то случайный адрес
+        return set_dist(gen) * cache_config.line_size;
+    }
+}
+
+std::uint32_t Generator::generate_unique_address_for_set(unsigned int set_index, std::unordered_map<std::uint32_t, std::uint32_t>& history) {
+    // вычисление базового адреса для набора
+    std::uint32_t base_addr = set_index * cache_config.line_size;
+
+    unsigned int line_size_bits = std::log2(cache_config.line_size);
+    unsigned int set_count_bits = std::log2(cache_config.cache_size / (cache_config.line_size * cache_config.associativity));
+
+    // убеждаемся, что адрес уникальный и вызывает вытеснение
+    std::uint32_t tag = tag_dist(gen);
+    std::uint32_t address = base_addr | (tag << (line_size_bits + set_count_bits));
+
+    while (history.find(address) != history.end()) {
+        tag = tag_dist(gen);
+        address = base_addr | (tag << (line_size_bits + set_count_bits));
+    }
+
+    return address;
 }
 
 std::uint32_t Generator::generate_data() {
@@ -81,9 +115,8 @@ void Generator::generate_tests(const std::string& output_file, unsigned int num_
 }
 
 std::uint32_t Generator::get_random_initialized_address() {
-    // для вариативности, такое тоже возможно
     if (history.empty()) {
-        exit(1);
+        throw std::runtime_error("No initialized addresses available for reading.");
     }
     std::uniform_int_distribution<> index_dist(0, history.size() - 1);
     auto it = history.begin();
